@@ -47,14 +47,19 @@ cops_django_dc:
   -p "{{cops_django_composename}}"
 cops_django_default_from_email: noreply@{{cops_django_hostname}}
 cops_django_server_email: "{{cops_django_default_from_email}}"
+cops_django_mailcatcher_user: mailcatcher
+cops_django_mailcatcher_password: mailcatcher
+cops_django_server_email: "{{cops_django_default_from_email}}"
 cops_django_email_server: mailcatcher
 cops_django_email_host_user: ''
 cops_django_email_host_password: ''
 cops_django_email_host_port: 1025
-cops_django_email_use_tls: 'False'
+cops_django_email_use_tls: 'no'
+cops_terralego_sentry_dsn: ''
 # free form for params inside dockerenv
 cops_django_dotenv: |-
   APP_TYPE=django
+  DJANGO_SETTINGS_MODULE={{cops_django_settings_module}}
   DJANGO_PY_VER={{ cops_django_py_ver }}
   DJANGO_NAME={{ cops_django_name }}
   COMPOSE_PROJECT_NAME={{cops_django_composename}}
