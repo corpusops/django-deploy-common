@@ -55,7 +55,8 @@ cops_django_email_host_user: ''
 cops_django_email_host_password: ''
 cops_django_email_host_port: 1025
 cops_django_email_use_tls: 'no'
-cops_terralego_sentry_dsn: ''
+cops_django_sentry_tags: ["{{cops_django_deploy_env}}"]
+cops_django_sentry_dsn: ''
 # free form for params inside dockerenv
 cops_django_dotenv: |-
   APP_TYPE=django
