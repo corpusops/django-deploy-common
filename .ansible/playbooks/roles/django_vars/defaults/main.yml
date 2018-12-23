@@ -55,7 +55,7 @@ cops_django_email_host_user: ''
 cops_django_email_host_password: ''
 cops_django_email_host_port: 1025
 cops_django_email_use_tls: 'no'
-cops_django_sentry_tags: ["{{cops_django_deploy_env}}"]
+cops_django_sentry_tags: ["env:{{cops_django_deploy_env}}"]
 cops_django_sentry_dsn: ''
 cops_django_docker_env_freeform: |-
   {{ cops_django_docker_env_defaults}}
@@ -82,6 +82,7 @@ cops_django_docker_env_defaults: |-
   DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
   {% if cops_django_sentry_dsn %}
   DJANGO__SENTRY_DSN={{cops_django_sentry_dsn}}
+  DJANGO__SENTRY_RELEASE={{cops_django_docker_tag}}
   DJANGO__SENTRY_TAGS={{cops_django_sentry_tags|join(',')}}
   {% endif %}
   {% if cops_django_devmode %}
