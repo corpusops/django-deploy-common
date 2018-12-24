@@ -76,7 +76,7 @@ cops_django_docker_env_defaults: |-
     cops_django_alternate_hostnames
   )|join('-|_')}}
   DJANGO__ALLOWED_HOSTS={{(
-    [cops_django_hostname, '.{0}'.format(cops_django_hostname)]+
+    [cops_django_hostname, '0.0.0.0', '.{0}'.format(cops_django_hostname)]+
     cops_django_alternate_hostnames
   )|join('-|_')}}
   DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
