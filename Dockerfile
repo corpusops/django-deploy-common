@@ -23,7 +23,8 @@ RUN bash -c 'set -ex \
     && : "project user & workdir" \
     && useradd -ms /bin/bash django --uid 1000'
 
-ADD requirements-dev.txt requirements.txt /code/
+ADD requirements*.txt tox.ini README.md /code/
+ADD local/django-deploy-common/ local/django-deploy-common/
 ADD src /code/src/
 ADD lib /code/lib/
 ADD private /code/private/
