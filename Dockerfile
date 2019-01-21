@@ -49,4 +49,5 @@ ADD local/django-deploy-common/prod/start.sh \
     local/django-deploy-common/prod/cron.sh \
     local/django-deploy-common/prod/init.sh /code/init/
 WORKDIR /code/src
-CMD "/code/init/init.sh"
+ENTRYPOINT ["/code/init/init.sh"]
+CMD []
