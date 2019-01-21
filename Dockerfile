@@ -24,7 +24,6 @@ RUN bash -c 'set -ex \
     && useradd -ms /bin/bash django --uid 1000'
 
 ADD requirements*.txt tox.ini README.md /code/
-ADD local/django-deploy-common/ local/django-deploy-common/
 ADD src /code/src/
 ADD lib /code/lib/
 ADD private /code/private/
@@ -32,6 +31,7 @@ ADD private /code/private/
 RUN bash -c 'set -ex \
     && chown django:django -R /code \
     && cd /code \
+    && ln -sf $(pwd)/init/init.sh /init.sh \
     && gosu django:django bash -c "python${PY_VER} -m venv venv \
     && venv/bin/pip install -U --no-cache-dir setuptools wheel \
     && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
@@ -42,12 +42,10 @@ RUN bash -c 'set -ex \
     && mkdir -p public/static public/media"'
 
 # image will drop privileges itself using gosu
-ADD local/django-deploy-common/crontab /etc/cron.d/django
 CMD chmod 0644 /etc/cron.d/django
 
-ADD local/django-deploy-common/prod/start.sh \
-    local/django-deploy-common/prod/cron.sh \
-    local/django-deploy-common/prod/init.sh /code/init/
+ADD local/django-deploy-common/             /code/local/django-deploy-common/
+ADD local/django-deploy-common/prod/init.sh /code/init/
 WORKDIR /code/src
-ENTRYPOINT ["/code/init/init.sh"]
-CMD []
+
+CMD "/init.sh"
