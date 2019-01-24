@@ -32,14 +32,18 @@ fi
 export IMAGE_MODE=${IMAGE_MODE:-${DEFAULT_IMAGE_MODE}}
 IMAGE_MODES="(cron|gunicorn|fg|celery_worker|celery_beat)"
 NO_START=${NO_START-}
+DEFAULT_NO_MIGRATE=
+DEFAULT_NO_STARTUP_LOGS=
+DEFAULT_NO_COLLECT_STATIC=
 if [[ -n $@ ]];then
-    NO_STARTUP_LOGS=${NO_STARTUP_LOGS-1}
-else
-    NO_STARTUP_LOGS=${NO_STARTUP_LOGS-}
+    DEFAULT_NO_STARTUP_LOGS=1
+    DEFAULT_NO_MIGRATE=1
+    DEFAULT_NO_COLLECT_STATIC=1
 fi
+NO_STARTUP_LOGS=${NO_MIGRATE-$DEFAULT_NO_STARTUP_LOGS}
+NO_MIGRATE=${NO_MIGRATE-$DEFAULT_NO_MIGRATE}
 NO_GUNICORN=${NO_GUNICORN-}
-NO_MIGRATE=${NO_MIGRATE-}
-NO_COLLECT_STATIC=${NO_COLLECT_STATIC-}
+NO_COLLECT_STATIC=${NO_COLLECT_STATIC-$DEFAULT_NO_COLLECT_STATIC}
 NO_IMAGE_SETUP="${NO_IMAGE_SETUP:-"1"}"
 FORCE_IMAGE_SETUP="${FORCE_IMAGE_SETUP:-"1"}"
 DO_IMAGE_SETUP_MODES="${DO_IMAGE_SETUP_MODES:-"fg|gunicorn"}"
@@ -213,14 +217,14 @@ fixperms() {
     done
     while read f;do chmod 0755 "$f";done < \
         <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type d \
-          -not \( -perm 0755 \) |sort)
+          -not \( -perm 0755 2>/dev/null\) |sort)
     while read f;do chmod 0644 "$f";done < \
         <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type f \
-          -not \( -perm 0644 \) |sort)
+          -not \( -perm 0644 2>/dev/null\) |sort)
     while read f;do chown $APP_USER:$APP_USER "$f";done < \
         <(find $FINDPERMS_OWNERSHIP_DIRS_CANDIDATES \
           \( -type d -or -type f \) \
-          -and -not \( -user $APP_USER -and -group $APP_GROUP \) |sort)
+             -and -not \( -user $APP_USER -and -group $APP_GROUP \)  2>/dev/null|sort)
 }
 
 #  usage: print this help
