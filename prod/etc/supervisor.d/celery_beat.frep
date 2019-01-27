@@ -1,6 +1,6 @@
 
 [program:celery_worker]
-# use gosu to have all plone groups
+# use gosu to have all django groups
 command = gosu django sh -c 'set -ex \
   && celery worker -A {{ .Env.DJANGO_CELERY }} -l {{ .Env.CELERY_LOGLEVEL}}'
 autostart = true

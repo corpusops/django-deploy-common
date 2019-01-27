@@ -1,6 +1,6 @@
 
 [program:gunicorn]
-# use gosu to have all plone groups
+# use gosu to have all django groups
 command = gosu django sh -c 'set -ex \
   && exec gunicorn {{ .Env.DJANGO_WSGI }} -w {{ .Env.GUNICORN_WORKERS }} -b {{ .Env.DJANGO_LISTEN }}'
 autostart = true

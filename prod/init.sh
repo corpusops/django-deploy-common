@@ -24,7 +24,7 @@ fi
 # activate shell debug if SDEBUG is set
 if [[ -n $SDEBUG ]];then set -x;fi
 
-DEFAULT_IMAGE_MODE=fg
+DEFAULT_IMAGE_MODE=gunicorn
 if [[ -n $NO_GUNICORN ]];then
     # retro compat with old setups
     DEFAULT_IMAGE_MODE=fg
@@ -32,6 +32,7 @@ fi
 export IMAGE_MODE=${IMAGE_MODE:-${DEFAULT_IMAGE_MODE}}
 IMAGE_MODES="(cron|gunicorn|fg|celery_worker|celery_beat)"
 NO_START=${NO_START-}
+DJANGO_CONF_PREFIX="${DJANGO_CONF_PREFIX:-"DJANGO__"}"
 DEFAULT_NO_MIGRATE=
 DEFAULT_NO_STARTUP_LOGS=
 DEFAULT_NO_COLLECT_STATIC=
@@ -162,7 +163,7 @@ configure() {
         di="/$(dirname $i)" \
             && if [ ! -e "$di" ];then mkdir -pv "$di" >&2;fi \
             && cp "$i" "/$i" \
-            && CONF_PREFIX="$PLONE_CONF_PREFIX" confenvsubst.sh "/$i" \
+            && CONF_PREFIX="$DJANGO_CONF_PREFIX" confenvsubst.sh "/$i" \
             && rm -f "/$i"
     done
     # install wtih frep any template file to / (eg: logrotate & cron file)
