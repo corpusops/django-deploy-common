@@ -45,7 +45,7 @@ RUN bash -c 'set -ex \
 CMD chmod 0644 /etc/cron.d/django
 
 ADD local/django-deploy-common/             /code/local/django-deploy-common/
-ADD local/django-deploy-common/prod/init.sh /code/init/
+ADD local/django-deploy-common/sys/init.sh /code/init/
 WORKDIR /code/src
 
 CMD "/init.sh"
