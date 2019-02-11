@@ -27,11 +27,15 @@ ADD requirements*.txt tox.ini README.md /code/
 ADD src /code/src/
 ADD lib /code/lib/
 ADD private /code/private/
+ADD sys                             /code/sys
+ADD local/django-deploy-common/     /code/local/django-deploy-common/
 
 RUN bash -c 'set -ex \
     && chown django:django -R /code \
-    && cd /code \
-    && ln -sf $(pwd)/sys/init.sh /init.sh \
+    && cd /code && mkdir init\
+    && cp -frnv /code/local/django-deploy-common/sys/* sys \
+    && cp -frnv sys/* init \
+    && ln -sf $(pwd)/init/init.sh /init.sh \
     && gosu django:django bash -c "python${PY_VER} -m venv venv \
     && venv/bin/pip install -U --no-cache-dir setuptools wheel \
     && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
@@ -44,8 +48,6 @@ RUN bash -c 'set -ex \
 # image will drop privileges itself using gosu
 CMD chmod 0644 /etc/cron.d/django
 
-ADD local/django-deploy-common/     /code/local/django-deploy-common/
-ADD local/django-deploy-common/sys/ /code/sys/
 WORKDIR /code/src
 
 CMD "/init.sh"
