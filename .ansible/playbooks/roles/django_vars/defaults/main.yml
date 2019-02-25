@@ -98,6 +98,9 @@ cops_django_docker_env_defaults: |-
   DJANGO__DEFAULT_FROM_EMAIL={{ cops_django_default_from_email }}
   DJANGO__SERVER_EMAIL={{ cops_django_server_email }}
   DJANGO__EMAIL_HOST={{cops_django_email_server}}
+  {% if "{0}".format(cops_django_email_use_tls).lower() in ['yes', 'no'] %}
+  DJANGO__EMAIL_USE_TLS={{cops_django_email_use_tls}}
+  {% endif %}
   DJANGO__EMAIL_PORT={{cops_django_email_host_port}}
   DJANGO__EMAIL_HOST_USER={{cops_django_email_host_user}}
   DJANGO__EMAIL_HOST_PASSWORD={{cops_django_email_host_password}}
