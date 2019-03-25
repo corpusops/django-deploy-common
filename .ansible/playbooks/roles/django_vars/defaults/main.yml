@@ -136,7 +136,6 @@ cops_django_code_rsync_opts: [
     "--include", "local/*-deploy",
     "--exclude", ".ansible",
     "--exclude", "local/*",
-    "--exclude", ".git",
     "--exclude", ".tox",
     "--exclude", ".env",
     "--exclude", "docker.env"]
