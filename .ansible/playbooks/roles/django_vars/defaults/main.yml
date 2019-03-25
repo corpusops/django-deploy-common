@@ -106,6 +106,7 @@ cops_django_docker_env_defaults: |-
   DJANGO__EMAIL_HOST_PASSWORD={{cops_django_email_host_password}}
   MAILCATCHER_USER={{cops_django_mailcatcher_user}}
   MAILCATCHER_PASSWORD={{cops_django_mailcatcher_password}}
+  DJANGO__REDIS_URL={{cops_django_redis_url}}
   REDIS_URL={{cops_django_redis_url}}
 # free form for params inside dockerenv
 cops_django_dotenv: |-
