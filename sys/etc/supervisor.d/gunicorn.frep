@@ -2,7 +2,7 @@
 [program:gunicorn]
 # use gosu to have all django groups
 command = gosu django sh -c 'set -ex \
-  && exec gunicorn {{ .Env.DJANGO_WSGI }} -w {{ .Env.GUNICORN_WORKERS }} -b {{ .Env.DJANGO_LISTEN }}'
+  && exec gunicorn {{ .Env.DJANGO_WSGI }} -w {{ .Env.GUNICORN_WORKERS }} -b {{ .Env.DJANGO_LISTEN }} -k {{ .Env.$GUNICORN_CLASS }} {{ .Env.$GUNICORN_EXTRA_ARGS}}'
 autostart = true
 autorestart = true
 killasgroup = true

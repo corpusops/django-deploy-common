@@ -70,9 +70,14 @@ cops_django_sentry_dsn: ''
 cops_django_docker_env_freeform: |-
   {{ cops_django_docker_env_defaults}}
   {{ cops_django_docker_env_extra}}
+cops_django_gunicorn_class: "sync"
+cops_django_gunicorn_extra_args: ""
 cops_django_docker_env_defaults: |-
   # This need to be changed in production
   SECRET_KEY={{ cops_django_secret_key }}
+  # gunicorn
+  GUNICORN_CLASS={{cops_django_gunicorn_class}}
+  GUNICORN_EXTRA_ARGS={{cops_django_gunicorn_extra_args}}
   # db
   POSTGRES_HOST={{ cops_django_db_host }}
   POSTGRES_PORT={{ cops_django_db_port }}
