@@ -41,10 +41,21 @@ RUN bash -exc ': \
     fi \
     && mkdir -p public/static public/media"'
 
+# django basic setup
+RUN gosu django:django bash -exc ': \
+    && . venv/bin/activate &>/dev/null \
+    && cd src \
+    && : django settings only for building steps \
+    && export SECRET_KEY=build_time_key \
+    && : \
+    && ./manage.py compilemessages \
+    && cd - \
+    '
+
 ADD sys                             /code/sys
 ADD local/django-deploy-common/     /code/local/django-deploy-common/
 RUN bash -exc ': \
-    && cd /code && mkdir init\
+    && cd /code && mkdir init \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && cp -frnv /code/local/django-deploy-common/sys/* sys \
