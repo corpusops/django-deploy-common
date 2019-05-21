@@ -46,7 +46,7 @@ RUN bash -exc ': \
     && if [[ -n \"$BUILD_DEV\" ]];then \
       venv/bin/pip install -U --no-cache-dir \
       -r ./requirements.txt \
-      -r ./requirements-dev.txt;\
+      -r ./requirements-dev.txt\
       && if [ "x$WITH_VSCODE" = "x1" ];then venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
       && if [ "x$WITH_PYCHARM" = "x1" ];then venv/vin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
