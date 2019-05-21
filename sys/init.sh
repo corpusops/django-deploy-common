@@ -60,6 +60,9 @@ export APP_GROUP="$APP_USER"
 export USER_DIRS=". public/media"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
+# export back the gateway ip as a host
+ip -4 route list match 0/0 | awk '{print $3" host.docker.internal"}' >> /etc/hosts
+
 # django variables
 export GUNICORN_CLASS=${GUNICORN_CLASS:-sync}
 export GUNICORN_EXTRA_ARGS="${GUNICORN_EXTRA_ARGS-}"
