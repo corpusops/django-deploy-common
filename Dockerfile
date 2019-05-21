@@ -28,6 +28,15 @@ ADD --chown=django:django src /code/src/
 ADD --chown=django:django lib /code/lib/
 ADD --chown=django:django private /code/private/
 
+ARG VSCODE_VERSION=
+ARG PYCHARM_VERSION=
+ENV VSCODE_VERSION=$VSCODE_VERSION
+ENV PYCHARM_VERSION=$PYCHARM_VERSION
+ARG WITH_VSCODE=0
+ENV WITH_VSCODE=$WITH_VSCODE
+ARG WITH_PYCHARM=0
+ENV WITH_PYCHARM=$WITH_PYCHARM
+
 RUN bash -exc ': \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
@@ -38,6 +47,8 @@ RUN bash -exc ': \
       venv/bin/pip install -U --no-cache-dir \
       -r ./requirements.txt \
       -r ./requirements-dev.txt;\
+      && if [ "x$WITH_VSCODE" = "x1" ];then venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
+      && if [ "x$WITH_PYCHARM" = "x1" ];then venv/vin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
     && mkdir -p public/static public/media"'
 
