@@ -281,7 +281,11 @@ fi
 # Run app
 pre() {
     configure
-    services_setup
+    # fixperms may have to be done on first run
+    if ! ( services_setup );then
+        fixperms
+        services_setup
+    fi
     fixperms
 }
 
