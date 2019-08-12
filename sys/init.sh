@@ -163,10 +163,10 @@ configure() {
     # copy only if not existing template configs from common deploy project
     # and only if we have that common deploy project inside the image
     if [ ! -e etc ];then mkdir etc;fi
-    for i in local/*deploy-common/etc local/*deploy-common/sys/etc sys/etc;do
+    for i in sys/etc local/*deploy-common/etc local/*deploy-common/sys/etc;do
         if [ -d $i ];then cp -rfnv $i/* etc >&2;fi
     done
-    # install wtih envsubst any template file to / (eg: logrotate & cron file)
+    # install with envsubst any template file to / (eg: logrotate & cron file)
     for i in $(find etc -name "*.envsubst" -type f 2>/dev/null);do
         di="/$(dirname $i)" \
             && if [ ! -e "$di" ];then mkdir -pv "$di" >&2;fi \
