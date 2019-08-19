@@ -2,6 +2,7 @@
 cops_django_name: djangoinstance
 cops_django_project_module_name: "{{cops_django_name}}"
 cops_django_settings_module: "{{cops_django_project_module_name}}.settings.instances.{{cops_django_deploy_env}}"
+cops_django_project_dir: "./src/{{cops_django_project_module_name.replace('.', '/')}}"
 cops_django_py_ver: "3.7"
 cops_django_deploy_env: "dev"
 cops_django_docker_image_tag: "{{cops_django_name}}"
@@ -131,6 +132,7 @@ cops_django_docker_env_extra: ""
 cops_django_localpy_extra: ""
 # Normally playbook is in ./.ansible/playbooks
 cops_django_code_dir: "{{playbook_dir}}/../.."
+cops_django_theme_rsync_opts: ["-azv", "--delete"]
 cops_django_code_rsync_opts: [
     "-azv",
     # include deploy projects base code
@@ -159,3 +161,22 @@ cops_django_backup_pgdump_urls:
   docker_dir: "{{cops_django_dir}}"
   docker_service: backup
   docker_compose: "{{cops_django_dc}}"
+cops_django_sync_theme_contents_front: |-
+  {% set res = {} %}
+  {% set _ = res.update({
+    "{0}/{1}".format(cops_django_project_dir, '/static/dist/'): {},
+    "{0}/{1}".format(cops_django_project_dir, '/static/js/'): {},
+    "{0}/{1}".format(cops_django_project_dir, '/static/css/'): {},
+    "{0}/{1}".format(cops_django_project_dir, '/static/styles/'): {},
+    "{0}/{1}".format(cops_django_project_dir, '/static/scripts/'): {},
+  }) %}
+  {{ res | to_json }}
+cops_django_sync_theme_contents_webpack: |-
+  {% set res = {} %}
+  {% set _ = res.update({
+    "{0}/{1}".format(cops_django_project_dir, '/webpack-stats.json'): {},
+    'webpack-stats.json': {},
+  }) %}
+  {% set _ = res.update(cops_django_sync_theme_contents_front) %}
+  {{ res | to_json }}
+cops_django_code_sync_theme_contents: {}
