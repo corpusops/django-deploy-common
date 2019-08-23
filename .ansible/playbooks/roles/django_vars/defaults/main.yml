@@ -179,4 +179,4 @@ cops_django_sync_theme_contents_webpack: |-
   }) %}
   {% set _ = res.update(cops_django_sync_theme_contents_front) %}
   {{ res | to_json }}
-cops_django_code_sync_theme_contents: {}
+cops_django_sync_theme_contents: {}
