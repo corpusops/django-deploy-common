@@ -18,6 +18,7 @@ cops_django_alternate_hostnames: [".{{cops_django_tld_domain}}"]
 cops_django_secret_key: "SuperSecret"
 cops_django_gateway: "{{ ansible_default_ipv4.address}}"
 cops_django_composename: "{{cops_django_name}}"
+cops_django_http_port: 80
 cops_django_db_host: "db"
 cops_django_db_port: "5432"
 cops_django_db_user: "secretJFCxwPHz99R9jIi"
@@ -115,6 +116,7 @@ cops_django_docker_env_defaults: |-
   REDIS_URL={{cops_django_redis_url}}
 # free form for params inside dockerenv
 cops_django_dotenv: |-
+  DJANGO__HTTP_PORT={{cops_django_http_port}}
   APP_TYPE=django
   DJANGO_SETTINGS_MODULE={{cops_django_settings_module}}
   DJANGO_PY_VER={{ cops_django_py_ver }}
