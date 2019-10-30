@@ -30,6 +30,8 @@ cops_django_build_args: "--no-cache django cron"
 cops_django_restarted_services_default: "db redis django nginx backup cron"
 cops_django_restarted_services: "{{cops_django_restarted_services_default}}"
 cops_django_purge_volumes: [statics]
+cops_django_force_sync_ssh_user: null
+cops_django_sync_ssh_user: ""
 cops_django_sshargs: >-
   {% set k = hostvars[inventory_hostname].get(
                 'ansible_ssh_private_key_file', '') %}
@@ -41,6 +43,12 @@ cops_django_sshargs: >-
   {{ hostvars[inventory_hostname].ansible_ssh_args | default('') }}
   {{ hostvars[inventory_hostname].ansible_ssh_common_args | default('') }}
   {{ hostvars[inventory_hostname].ansible_ssh_extra_args | default('') }}
+  {% endif %}
+  {% if((cops_django_force_sync_ssh_user) or
+        (cops_django_sync_ssh_user and (cops_django_force_sync_ssh_user == True))
+    )%}
+  {% set user = cops_django_sync_ssh_user or ansible_user or '' %}
+  {% if user %}-l {{user}}{% endif %}
   {% endif %}
 cops_django_build: false
 cops_django_pull: true
