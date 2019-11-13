@@ -233,7 +233,9 @@ fixperms() {
         fi
     done
     for i in $USER_DIRS;do
-        chown $APP_USER:$APP_GROUP "$i"
+        if [ -e "$i" ];then
+            chown $APP_USER:$APP_GROUP "$i"
+        fi
     done
     while read f;do chmod 0755 "$f";done < \
         <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type d \
