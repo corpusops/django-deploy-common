@@ -57,7 +57,7 @@ FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"pub
 export APP_TYPE="${APP_TYPE:-docker}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
 export APP_GROUP="$APP_USER"
-export USER_DIRS=". public/media"
+export USER_DIRS="${USER_DIRS:-". public/media"}"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
 # export back the gateway ip as a host if ip is available in container
@@ -231,6 +231,9 @@ fixperms() {
                 chmod 0640 "$f"
             done < <(find "$i" -type f)
         fi
+    done
+    for i in $USER_DIRS;do
+        chown $APP_USER:$APP_GROUP "$i"
     done
     while read f;do chmod 0755 "$f";done < \
         <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type d \
