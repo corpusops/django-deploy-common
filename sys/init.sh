@@ -53,11 +53,11 @@ FORCE_IMAGE_SETUP="${FORCE_IMAGE_SETUP:-"1"}"
 DO_IMAGE_SETUP_MODES="${DO_IMAGE_SETUP_MODES:-"fg|gunicorn"}"
 
 FINDPERMS_PERMS_DIRS_CANDIDATES="${FINDPERMS_PERMS_DIRS_CANDIDATES:-"public private"}"
-FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"public private"}"
+FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"public private data"}"
 export APP_TYPE="${APP_TYPE:-docker}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
 export APP_GROUP="$APP_USER"
-export USER_DIRS="${USER_DIRS:-". public/media"}"
+export USER_DIRS="${USER_DIRS:-". public/media data"}"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
 # export back the gateway ip as a host if ip is available in container
