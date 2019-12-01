@@ -35,12 +35,18 @@ ENV PYCHARM_VERSION=$PYCHARM_VERSION
 ARG WITH_VSCODE=0
 ENV WITH_VSCODE=$WITH_VSCODE
 ARG WITH_PYCHARM=0
+ARG BUILD_CFLAGS=
+ARG BUILD_LDFLAGS=
+ENV BUILD_CFLAGS=$BUILD_CFLAGS
+ENV BUILD_LDFLAGS=$BUILD_LDFLAGS
 ENV WITH_PYCHARM=$WITH_PYCHARM
 
 RUN bash -exc ': \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
+    && if [[ -n \"$BUILD_CFLAGS\" ]];then export CFLAGS="${BUILD_CFLAGS}";fi \
+    && if [[ -n \"$BUILD_LDFLAGS\" ]];then export LDFLAGS="${BUILD_LDFLAGS}";fi \
     && venv/bin/pip install -U --no-cache-dir setuptools wheel \
     && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
     && if [[ -n \"$BUILD_DEV\" ]];then \
