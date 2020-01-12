@@ -3,7 +3,7 @@
     state: directory
     mode: "2751"
     path: "{{item}}"
-  with_items:
+  loop:
   - "{{cops_django_dir}}"
   - "{{cops_django_dir}}/local/postgresql/data"
   - "{{cops_django_dir}}/local/backup"
@@ -45,7 +45,7 @@
       {{cops_django_dotenv_extra}}
     marker: "# ANSIBLE MANAGED BLOCK :: deploy commit :: {mark}"
 - include_tasks: docker_login.yml
-  with_items: "{{cops_django_registries}}"
+  loop: "{{cops_django_registries}}"
 - shell: |
     set -ex
     cd "{{cops_django_dir}}"
