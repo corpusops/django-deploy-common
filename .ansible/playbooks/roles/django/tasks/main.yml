@@ -21,7 +21,7 @@
     #update_opts: '--recursive'
 - include_tasks: sync_content.yml
   when: cops_django_sync_theme_contents|length|copsf_asbool
-  with_dict: "{{cops_django_sync_theme_contents}}"
+  loop: "{{cops_django_sync_theme_contents|dict2items}}"
 - template:
     src: "dbsmartbackup.yml"
     dest: "{{cops_django_dir}}/local/backup/setup/reconfigure.yml"
