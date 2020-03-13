@@ -217,13 +217,17 @@ teleport_origin_dump_script: |-
   set -ex
   cd "{{teleport_origin_dir}}"
   {{teleport_origin_db_pgdump_script}}
-  gzip dump
+  cd "{{teleport_origin_dir}}"
+  gzip -f dump
 teleport_origin_db_pgdump_script: |-
   {% if teleport_mode in ['makinastates'] %}
   {% if teleport_origin_db_password %}PGPASSWORD="{{teleport_origin_db_password}}"{% endif %} \
   pg_dump \
     --dbname="{{teleport_origin_db_name}}" --user="{{teleport_origin_db_user}}" \
     --host="{{teleport_origin_db_host}}" --port="{{teleport_origin_db_port}}" -Fc>dump
+  {% else %}
+  cd "{{cops_django_dir}}"
+  {{cops_django_dc}} exec -T db pg_dump -U {{cops_django_db_user}} -Fc {{cops_django_db_name}} > "{{teleport_origin_dir}}/dump"
   {% endif %}
 teleport_origin_db_host: "{{cops_django_db_host}}"
 teleport_origin_db_port: "{{cops_django_db_password}}"
@@ -234,8 +238,8 @@ teleport_origin_db_name: "{{cops_django_db_name}}"
 teleport_origin_db_is_docker: "{{teleport_mode in ['standard'] and True or False}}"
 teleport_origin_db_dockername: "{{cops_django_name}}_db_1"
 teleport_pg_restore: >-
-  pg_restore
-  --no-owner --no-privileges --no-acl --clean --if-exists --create
+  zcat /tmp/dump.gz | pg_restore
+  --no-owner --no-privileges --no-acl --clean --if-exists
   -U $POSTGRES_USER -d {{cops_django_db_name}}
 teleport_impersonate: "{{'prod' not in teleport_destination}}"
 teleport_ms_medias_dir: "/srv/projects/{{cops_django_name}}/data/media/"

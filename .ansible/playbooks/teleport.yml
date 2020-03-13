@@ -21,8 +21,7 @@
   - file:
       state: directory
       mode: 751
-      # path: "{{teleport_destination_medias_dir}}"
-      path: "/tmp/mytest"
+      path: "{{teleport_destination_medias_dir}}"
     tags: [sync, sync_media]
   - shell: |-
       set -ex
@@ -45,7 +44,6 @@
       "{{teleport_destination_dir}}/"
     no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
     tags: [sync, sync_media]
-  #  when: teleport_mode not in ['makinastates']
   - shell: |-
       set -ex
       cd "{{cops_django_dir}}"
@@ -65,8 +63,11 @@
   - shell: |-
       set -ex
       cd "{{cops_django_dir}}"
-      zcat "{{teleport_destination_dump_path}}" \
-        | {{cops_django_dc}} exec -T db sh -c '{{teleport_pg_restore}}'
+      cat "{{teleport_destination_dump_path}}" \
+        | {{cops_django_dc}} exec -T db sh -c 'cat>/tmp/dump.gz'
+      COMPOSE_INTERACTIVE_NO_CLI=1 {{cops_django_dc}} \
+        exec -T db sh -c '{{teleport_pg_restore}}'
+      {{cops_django_dc}} exec -T db rm -f /tmp/dump.gz
     args: {executable: /bin/bash}
     tags: [reset, reset_db]
   - shell: "{{teleport_impersonate_script}}"
