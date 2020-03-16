@@ -58,6 +58,10 @@
       <( find "{{teleport_destination_medias_dir}}" \
         \( -not -uid {{cops_django_medias_owner}} -or \
            -not -gid {{cops_django_medias_group}} \) )
+      while read f;do chmod -v o+x $f;done < \
+      <(find "{{teleport_destination_medias_dir}}" -type d -and -not -perm -o+x)
+      while read f;do chmod -v o+rx $f;done < \
+      <(find "{{teleport_destination_medias_dir}}" -type f -and -not -perm -o+rx)
     args: {executable: /bin/bash}
     tags: [reset, reset_media_perms]
   - shell: |-
