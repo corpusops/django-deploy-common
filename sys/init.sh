@@ -57,7 +57,7 @@ FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"pub
 export APP_TYPE="${APP_TYPE:-docker}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
 export APP_GROUP="$APP_USER"
-export USER_DIRS="${USER_DIRS:-". public/media data"}"
+export USER_DIRS="${USER_DIRS:-". public/media data /logs/cron"}"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
 # export back the gateway ip as a host if ip is available in container
