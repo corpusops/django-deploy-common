@@ -1,4 +1,5 @@
 # Python
+/test/testproject
 *.pyc
 __pycache__
 
