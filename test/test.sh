@@ -179,9 +179,10 @@ if [[ -z $NO_INIT ]];then
 cp .env.dist .env
 cp docker.env.dist docker.env
 fi
+GDAL_VERSION="${GDAL_VERSION:-2.2.3}"
 
-if ! ( grep -q gdal requirements.txt );then
-    printf "gdal<2.4\n$(cat requirements.txt)" > requirements.txt
+if ! ( grep -iq gdal requirements.txt );then
+    printf "GDAL==$GDAL_VERSION\n$(cat requirements.txt)" > requirements.txt
     echo libgdal-dev >> apt.txt
 fi
 ./control.sh build django
