@@ -35,9 +35,15 @@ ENV PYCHARM_VERSION=$PYCHARM_VERSION
 ARG WITH_VSCODE=0
 ENV WITH_VSCODE=$WITH_VSCODE
 ARG WITH_PYCHARM=0
-ARG CFLAGS=-I/usr/include/gdal
+ARG CFLAGS=
+ARG CPPLAGS=
+ARG C_INCLUDE_PATH=/usr/include/gdal/
+ARG CPLUS_INCLUDE_PATH=/usr/include/gdal/
 ARG LDFLAGS=
 ENV CFLAGS=$CFLAGS
+ENV CPPLAGS=$CPPFLAGS
+ENV C_INCLUDE_PATH=$C_INCLUDE_PATH
+ENV CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH
 ENV LDFLAGS=$LDFLAGS
 ENV WITH_PYCHARM=$WITH_PYCHARM
 
@@ -45,7 +51,7 @@ RUN bash -exc ': \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
-    && venv/bin/pip install -U --no-cache-dir setuptools wheel \
+    && venv/bin/pip install -U --no-cache-dir setuptools wheel\
     && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
     && if [[ -n \"$BUILD_DEV\" ]];then \
       venv/bin/pip install -U --no-cache-dir \
