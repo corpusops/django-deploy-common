@@ -45,7 +45,7 @@ RUN bash -exc ': \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
-    && venv/bin/pip install -U --no-cache-dir setuptools wheel \
+    && venv/bin/pip install -U --no-cache-dir setuptools wheel pip \
     && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
     && if [[ -n \"$BUILD_DEV\" ]];then \
       venv/bin/pip install -U --no-cache-dir \
