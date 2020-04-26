@@ -43,7 +43,7 @@
       "{{groups[teleport_origin][0]}}:{{teleport_origin_dir}}/*z" \
       "{{teleport_destination_dir}}/"
     no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
-    tags: [sync, sync_media]
+    tags: [sync, sync_dump]
   - shell: |-
       set -ex
       cd "{{cops_django_dir}}"
