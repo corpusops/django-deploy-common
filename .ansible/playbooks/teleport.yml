@@ -74,9 +74,8 @@
       {{cops_django_dc}} exec -T db rm -f /tmp/dump.gz
     args: {executable: /bin/bash}
     tags: [reset, reset_db]
-  - shell: "{{teleport_impersonate_script}}"
-    when: teleport_impersonate|default(False)
-    tags: [reset, impersonate]
+  - shell: "{{teleport_post_reset_script}}"
+    tags: [reset, post_script]
   - shell: |-
       set -ex
       cd "{{cops_django_dir}}"

@@ -238,6 +238,7 @@ teleport_origin_db_name: "{{cops_django_db_name}}"
 teleport_origin_db_is_docker: "{{teleport_mode in ['standard'] and True or False}}"
 teleport_origin_db_dockername: "{{cops_django_name}}_db_1"
 teleport_pg_restore_drop_db: true
+teleport_django_fakeinitial: true
 teleport_pg_restore: >-
   {% if teleport_pg_restore_drop_db%}
   dropdb -U $POSTGRES_USER {{cops_django_name}} &&
@@ -245,11 +246,10 @@ teleport_pg_restore: >-
   -E {{teleport_db_encoding}} &&
   {%endif%}
   zcat /tmp/dump.gz | pg_restore
-  --no-owner --no-privileges --no-acl 
+  --no-owner --no-privileges --no-acl
   {% if not teleport_pg_restore_drop_db%} --clean --if-exists{%endif%}
   -U $POSTGRES_USER -d {{cops_django_db_name}}
 teleport_db_encoding: 'UTF-8'
-teleport_impersonate: "{{'prod' not in teleport_destination}}"
 teleport_ms_medias_dir: "/srv/projects/{{cops_django_name}}/data/media/"
 teleport_docker_medias_dir: "/var/lib/docker/volumes/{{cops_django_name}}_mediafiles/_data/"
 teleport_origin_medias_dir: "{% if teleport_mode in ['makinastates'] %}{{teleport_ms_medias_dir}}{%else%}{{teleport_docker_medias_dir}}{%endif%}"
@@ -292,6 +292,13 @@ teleport_destination_sshargs: >-
   {% set user = cops_django_sync_ssh_user or ansible_user or '' %}
   {% if user %}-l {{user}}{% endif %}
   {% endif %}
-teleport_impersonate_script: >-
-  /bin/true
+teleport_post_reset_script_default: |-
+  set -ex
+  {% if teleport_django_fakeinitial %}
+  cd {{cops_django_dir}};
+  {{cops_django_dc}} run \
+  -u django --no-deps --rm django sh -ec \
+  '/code/venv/bin/python ./manage.py migrate --fake-initial'
+  {%endif%}
+teleport_post_reset_script: "{{teleport_post_reset_script_default}}"
 ###
