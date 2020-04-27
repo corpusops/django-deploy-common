@@ -245,7 +245,8 @@ teleport_pg_restore: >-
   -E {{teleport_db_encoding}} &&
   {%endif%}
   zcat /tmp/dump.gz | pg_restore
-  --no-owner --no-privileges --no-acl --clean --if-exists
+  --no-owner --no-privileges --no-acl 
+  {% if not teleport_pg_restore_drop_db%} --clean --if-exists{%endif%}
   -U $POSTGRES_USER -d {{cops_django_db_name}}
 teleport_db_encoding: 'UTF-8'
 teleport_impersonate: "{{'prod' not in teleport_destination}}"
