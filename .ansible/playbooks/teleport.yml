@@ -1,0 +1,81 @@
+---
+- hosts: "{{teleport_origin}}"
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - block:
+    - include_role: {name: django_vars, public: y}
+      tags: [backup, backup_vars]
+    - block:
+      - file:
+          state: directory
+          mode: 750
+          path: "{{teleport_origin_dir}}"
+      - shell: "{{teleport_origin_dump_script}}"
+        no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
+      tags: [backup, backup_db]
+      # sync medias
+- hosts: "{{teleport_destination}}"
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django_vars, public: y}
+  - file:
+      state: directory
+      mode: 751
+      # path: "{{teleport_destination_medias_dir}}"
+      path: "/tmp/mytest"
+    tags: [sync, sync_media]
+  - shell: |-
+      set -ex
+      rsync -azv -e "ssh {{teleport_origin_sshargs}}" \
+      "{{groups[teleport_origin][0]}}:{{teleport_origin_medias_dir}}/" \
+      "{{teleport_destination_medias_dir}}/"
+    no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
+    tags: [sync, sync_media]
+  # sync db
+  - block:
+    - file:
+        state: directory
+        mode: 751
+        path: "{{teleport_destination_dir}}"
+      tags: [sync, sync_dump]
+  - shell: |-
+      set -ex
+      rsync -azv -e "ssh {{teleport_origin_sshargs}}" \
+      "{{groups[teleport_origin][0]}}:{{teleport_origin_dir}}/*z" \
+      "{{teleport_destination_dir}}/"
+    no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
+    tags: [sync, sync_media]
+  #  when: teleport_mode not in ['makinastates']
+  - shell: |-
+      set -ex
+      cd "{{cops_django_dir}}"
+      {{cops_django_dc}} stop django
+      {{cops_django_dc}} stop cron
+    tags: [reset, stop]
+  - shell: |-
+      set -ex
+      while read f;do
+        chown -Rvf {{cops_django_medias_owner}}:{{cops_django_medias_group}} "$f"
+      done < \
+      <( find "{{teleport_destination_medias_dir}}" \
+        \( -not -uid {{cops_django_medias_owner}} -or \
+           -not -gid {{cops_django_medias_group}} \) )
+    args: {executable: /bin/bash}
+    tags: [reset, reset_media_perms]
+  - shell: |-
+      set -ex
+      cd "{{cops_django_dir}}"
+      zcat "{{teleport_destination_dump_path}}" \
+        | {{cops_django_dc}} exec -T db sh -c '{{teleport_pg_restore}}'
+    args: {executable: /bin/bash}
+    tags: [reset, reset_db]
+  - shell: "{{teleport_impersonate_script}}"
+    when: teleport_impersonate|default(False)
+    tags: [reset, impersonate]
+  - shell: |-
+      set -ex
+      cd "{{cops_django_dir}}"
+      {{cops_django_dc}} start django
+      {{cops_django_dc}} start cron
+    tags: [reset, restart]
+
