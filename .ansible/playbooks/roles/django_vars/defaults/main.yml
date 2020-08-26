@@ -82,6 +82,7 @@ cops_django_hosts_whitelist: "{{(
     [cops_django_hostname, '0.0.0.0', '.{0}'.format(cops_django_hostname)]+
     cops_django_alternate_hostnames
   )|join('-|_')}}"
+cops_django_hostnames: "{{([cops_django_hostname, '0.0.0.0'] + cops_django_alternate_hostnames)|join('-|_')}}"
 cops_django_sentry_tags: ["env:{{cops_django_deploy_env}}"]
 cops_django_sentry_dsn: ''
 cops_django_docker_env_freeform: |-
@@ -104,6 +105,7 @@ cops_django_docker_env_defaults: |-
   PGPASSWD={{cops_django_db_password }}
   # cors
   DJANGO__CORS_ORIGIN_WHITELIST={{cops_django_hosts_whitelist}}
+  DJANGO__COPS_ALL_HOSTNAMES={{cops_django_hostnames}}
   DJANGO__ALLOWED_HOSTS={{cops_django_hosts_whitelist}}
   DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
   DJANGO__HTTP_PROTECT_USER={{cops_django_http_protect_user}}
