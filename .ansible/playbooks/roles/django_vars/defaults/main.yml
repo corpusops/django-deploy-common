@@ -82,7 +82,7 @@ cops_django_hosts_whitelist: "{{(
     [cops_django_hostname, '0.0.0.0', '.{0}'.format(cops_django_hostname)]+
     cops_django_alternate_hostnames
   )|join('-|_')}}"
-cops_django_hostnames: "{{([cops_django_hostname, '0.0.0.0'] + cops_django_alternate_hostnames)|join('-|_')}}"
+cops_django_hostnames: "{{cops_django_hosts_whitelist}}"
 cops_django_sentry_tags: ["env:{{cops_django_deploy_env}}"]
 cops_django_sentry_dsn: ''
 cops_django_docker_env_freeform: |-
