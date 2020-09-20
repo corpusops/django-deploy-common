@@ -67,7 +67,7 @@
     _docker_compose_service:
       working_directory: "{{cops_django_dir}}"
       files: "{{cops_django_compose_files}}"
-      project: "{{cops_django_composename}}"
+      project: "{{cops_django_servicename}}"
       restart: "on-failure"
   tags: [service]
 # ensure manually handled services are booted
