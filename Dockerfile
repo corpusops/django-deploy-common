@@ -58,7 +58,7 @@ RUN bash -exc ': \
       -r ./requirements.txt \
       -r ./requirements-dev.txt\
       && if [ "x$WITH_VSCODE" = "x1" ];then venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
-      && if [ "x$WITH_PYCHARM" = "x1" ];then venv/vin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
+      && if [ "x$WITH_PYCHARM" = "x1" ];then venv/bin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
     && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done"'
 
