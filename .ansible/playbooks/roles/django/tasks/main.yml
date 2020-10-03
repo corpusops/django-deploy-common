@@ -19,9 +19,11 @@
     rsync_opts: "{{cops_django_code_rsync_opts}}"
     set_remote_user: "no"
     #update_opts: '--recursive'
+  tags: [django_sync]
 - include_tasks: sync_content.yml
   when: cops_django_sync_theme_contents|length|copsf_asbool
   loop: "{{cops_django_sync_theme_contents|dict2items}}"
+  tags: [django_sync, django_sync_theme]
 - template:
     src: "dbsmartbackup.yml"
     dest: "{{cops_django_dir}}/local/backup/setup/reconfigure.yml"
@@ -69,7 +71,7 @@
       files: "{{cops_django_compose_files}}"
       project: "{{cops_django_servicename}}"
       restart: "on-failure"
-  tags: [service]
+  tags: [django_service_register, django_service, service]
 # ensure manually handled services are booted
 # to handle sidekar volumes refresh accuratly
 - shell: |
@@ -100,6 +102,7 @@
   delay: 1
   register: restarted_docker_services
   until: "restarted_docker_services.rc == 0"
+  tags: [django_service_restart, django_service, service]
 ## as we use a named volume for nginx sidekar container, also
 ## purge the obsolete volumes leftover in-between
 - shell: |
@@ -127,3 +130,4 @@
   - "cops_django_docker_tag|copsf_asbool"
   - "cops_django_purge_volumes|copsf_asbool"
   changed_when: "'purged volume' in purge_volumes.stderr"
+  tags: [django_service_volumepurge, django_service, service]
