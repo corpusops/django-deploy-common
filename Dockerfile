@@ -24,7 +24,7 @@ RUN bash -c 'set -ex \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
 FROM dependencies as pydependencies
-ADD --chown=django:django requirements*.txt tox.ini README.md /code/
+ADD --chown=django:django requirements* *.ini README* /code/
 # only bring minimal py for now as we get only deps (CI optims)
 ADD --chown=django:django src/*.py /code/src/
 ADD --chown=django:django private  /code/private/
@@ -52,18 +52,27 @@ ENV VSCODE_VERSION="$VSCODE_VERSION" \
     LDFLAGS="$LDFLAGS" \
     WITH_PYCHARM="$WITH_PYCHARM" \
     LANG="$LANG"
-
+ARG SETUPTOOLS_VERSION="50.3.2"
+ARG PIP_VERSION="20.2.4"
+ARG WHEEL_VERSION="0.35.1"
+ARG SETUPTOOLS_REQ="setuptools>=${SETUPTOOLS_VERSION}"
+ARG PIP_REQ="pip>=${PIP_VERSION}"
+ARG WHEEL_REQ="wheel>=${WHEEL_VERSION}"
+ENV SETUPTOOLS_REQ=$SETUPTOOLS_REQ
+ENV PIP_REQ=$PIP_REQ
+ENV WHEEL_REQ=$WHEEL_REQ
 RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
-    && venv/bin/pip install -U --no-cache-dir setuptools wheel pip\
-    && venv/bin/pip install -U --no-cache-dir -r \
-        <( egrep -hv -- "^-e" ./requirements.txt ) \
+    && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIP_REQ}\" \
+    && reqs=$(ls requirements.txt || ls requirements/requirements.txt ) \
+    && devreqs=$(ls requirements-dev.txt || ls requirements/requirements-dev.txt ) \
+    && req=\${reqs:?missing reqs} && devreqs=\${devreqs:?missing dev reqs} \
+    && venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} ) \
     && if [[ -n \"$BUILD_DEV\" ]];then \
-      venv/bin/pip install -U --no-cache-dir -r \
-        <( egrep -hv -- "^-e" ./requirements.txt ./requirements-dev.txt ) \
-      && if [ "x$WITH_VSCODE" = "x1" ];then venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
+      venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} \${devreqs} ) \
+      && if [ "x$WITH_VSCODE" = "x1" ];then  venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
       && if [ "x$WITH_PYCHARM" = "x1" ];then venv/bin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
     && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done" && date'
@@ -73,11 +82,10 @@ ADD --chown=django:django lib /code/lib/
 ADD --chown=django:django src /code/src/
 RUN bash -exc 'gosu django:django bash -exc ": \
   && . venv/bin/activate \
-  && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
-  && if [[ -n \"$BUILD_DEV\" ]];then \
-     venv/bin/pip install -U --no-cache-dir \
-        -r ./requirements.txt -r ./requirements-dev.txt; \
-  fi"'
+  && devreqs=$(ls requirements-dev.txt || ls requirements/requirements-dev.txt ) \
+  && reqs=$(ls requirements.txt || ls requirements/requirements.txt ) \
+  && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
+  && if [[ -n \"$BUILD_DEV\" ]];then venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs};fi"'
 
 FROM pydependencies as appsetup
 # django basic setup
