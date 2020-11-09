@@ -9,7 +9,7 @@ ARG GPG_KEYS=B42F6819007F00F88E364FD4036A9C25BF357DD4
 ARG GPG_KEYS_SERVERS="hkp://p80.pool.sks-keyservers.net:80 hkp://ipv4.pool.sks-keyservers.net hkp://pgp.mit.edu:80"
 
 WORKDIR /code
-ADD apt.txt /code/apt.txt
+ADD --chown=1000:1000 apt.txt /code/apt.txt
 
 # setup project timezone, dependencies, user & workdir, gosu
 RUN bash -c 'set -ex \
@@ -80,8 +80,9 @@ RUN gosu django:django bash -exc ': \
     && cd - \
     '
 
-ADD sys                             /code/sys
-ADD local/django-deploy-common/     /code/local/django-deploy-common/
+ADD --chown=django:django .git                         /code/.git
+ADD --chown=django:django sys                          /code/sys
+ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
 RUN bash -exc ': \
     && cd /code && for i in init;do if [ ! -e $i ];then mkdir -p $i;fi;done \
     && find /code -not -user django \
