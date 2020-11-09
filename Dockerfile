@@ -1,5 +1,5 @@
 ARG BASE=corpusops/ubuntu-bare:bionic
-FROM $BASE
+FROM $BASE as dependencies
 ENV PYTHONUNBUFFERED 1
 ENV DEBIAN_FRONTEND=noninteractive
 ARG TZ=Europe/Paris
@@ -16,17 +16,21 @@ RUN bash -c 'set -ex \
     && date && : "set correct timezone" \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && : "install packages" \
+    && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" /code/apt.txt \
     && apt-get update -qq \
     && apt-get install -qq -y $(grep -vE "^\s*#" /code/apt.txt  | tr "\n" " ") \
     && apt-get clean all && apt-get autoclean \
     && : "project user & workdir" \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
+FROM dependencies as pydependencies
 ADD --chown=django:django requirements*.txt tox.ini README.md /code/
 ADD --chown=django:django src /code/src/
 ADD --chown=django:django lib /code/lib/
 ADD --chown=django:django private /code/private/
 
+ARG PY_VER=3.6
+# See https://github.com/nodejs/docker-node/issues/380
 ARG BUILD_DEV=
 ARG VSCODE_VERSION=
 ARG PYCHARM_VERSION=
@@ -64,6 +68,7 @@ RUN bash -exc ': \
     fi \
     && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done" && date'
 
+FROM pydependencies as appsetup
 # django basic setup
 RUN gosu django:django bash -exc ': \
     && . venv/bin/activate &>/dev/null \

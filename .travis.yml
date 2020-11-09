@@ -18,14 +18,46 @@ env:
       sync_code="$install -C --synchronize-code --skip-sync-core" \
       release="$COPS_ROOT/hacking/docker_release" \
       silent_rm="$silent rm -rf"
+  matrix:
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST="true"
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST=""
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST=""
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST=""
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST=""
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
+  - PY_VER="3.6" DJANGO_VERSiON="" GDAL_VERSION="2.2.3" RELEASABLE_AS_LATEST=""
+    IMAGES="corpusops/django:${PY_VER}-${DJANGO_VER}-dependencies corpusops/django:${PY_VER}-${DJANGO_VER}-pydependencies corpusops/django:${PY_VER}-${DJANGO_VER}"
 cache: {directories: ["$HOME/.cache/pip", "$COPS_ROOT"]}
 before_install:
-- sudo apt-get update -qq
 - sudo apt-get install -qq -y --force-yes parallel
-- sudo service docker stop
 - .ansible/scripts/download_corpusops.sh
 - .ansible/scripts/setup_corpusops.sh
-- sh -c "$apply_role */*/roles/corpusops.roles/services_virt_docker/role.yml"
+- sudo apt-get update -qq
+# - sh -c "$apply_role */*/roles/corpusops.roles/services_virt_docker/role.yml"
+- sudo service docker stop
+- >
+  sudo bash -exc "python -c
+  \"d='/etc/docker/daemon.json';
+  import json;
+  c = json.load(open(d));
+  c['experimental'] = True;
+  print(c);open(d, 'w').write(json.dumps(c))
+  \"
+  && systemctl restart docker"
+- echo "$DOCKER_PASSWORD" | docker login --password-stdin --username="$DOCKER_RELEASER"
 - i=$(whoami) && sudo chown -Rf $i $COPS_ROOT
 script:
 - test/test.sh
+after_success:
+- for i in $IMAGES;do
+    imgs="$i"
+    if [ "x${RELEASE_AS_LATEST-}" = "xtrue" ];then
+      imgs="$imgs $(echo $i|sed -e "s/${ANSIBLE_RELEASE}$//g")"
+      docker tag $imgs
+    fi
+    DEBUG=1 hacking/docker_release $imgs
+  done
