@@ -3,6 +3,7 @@ cops_django_name: djangoinstance
 cops_django_project_module_name: "{{cops_django_name}}"
 cops_django_settings_module: "{{cops_django_project_module_name}}.settings.instances.{{cops_django_deploy_env}}"
 cops_django_project_dir: "./src/{{cops_django_project_module_name.replace('.', '/')}}"
+cops_django_front_dir: "{{cops_django_project_dir}}"
 cops_django_py_ver: "3.7"
 cops_django_deploy_env: "dev"
 cops_django_docker_image_tag: "{{cops_django_name}}"
@@ -17,7 +18,9 @@ cops_django_hostname: "{{cops_django_deploy_env}}-{{cops_django_name}}.{{cops_dj
 cops_django_alternate_hostnames: [".{{cops_django_tld_domain}}"]
 cops_django_secret_key: "SuperSecret"
 cops_django_gateway: "{{ ansible_default_ipv4.address}}"
-cops_django_composename: "{{cops_django_name}}"
+cops_django_composename: "{{(ansible_connection|default('ssh') in ['local'] and
+  (teleport_wd|copsf_basename) or
+  cops_django_name)}}"
 cops_django_servicename: "{{cops_django_composename}}"
 # docker compose settings (may include ip ip:port)
 cops_django_http_port: 80
@@ -63,7 +66,10 @@ cops_django_build: false
 cops_django_pull: true
 cops_django_registries: []
 #- {registry: registry.foo.net, username: foo, password: bar}
-cops_django_compose_files: [docker-compose.yml, docker-compose-prod.yml]
+cops_django_compose_files_prod: [docker-compose.yml, docker-compose-prod.yml]
+cops_django_compose_files_dev: [docker-compose.yml, docker-compose-dev.yml]
+cops_django_compose_files: "{{(ansible_connection|default('ssh') in ['local'] and
+  cops_django_compose_files_dev or cops_django_compose_files_prod)}}"
 cops_django_dc:
   docker-compose {% for i in cops_django_compose_files %} -f {{i}}{% endfor %}
   -p "{{cops_django_composename}}"
@@ -91,6 +97,8 @@ cops_django_docker_env_freeform: |-
   {{ cops_django_docker_env_extra}}
 cops_django_gunicorn_class: "sync"
 cops_django_gunicorn_extra_args: ""
+cops_django_generic_db_mode: postgres
+cops_django_db_mode: "{{cops_django_generic_db_mode}}"
 cops_django_docker_env_defaults: |-
   # This need to be changed in production
   SECRET_KEY={{ cops_django_secret_key }}
@@ -192,79 +200,145 @@ cops_django_backup_pgdump_urls:
 cops_django_sync_theme_contents_front: |-
   {% set res = {} %}
   {% set _ = res.update({
-    "{0}/{1}".format(cops_django_project_dir, '/static/dist/'): {},
-    "{0}/{1}".format(cops_django_project_dir, '/static/js/'): {},
-    "{0}/{1}".format(cops_django_project_dir, '/static/css/'): {},
-    "{0}/{1}".format(cops_django_project_dir, '/static/styles/'): {},
-    "{0}/{1}".format(cops_django_project_dir, '/static/scripts/'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/static/dist/'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/static/js/'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/static/css/'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/static/styles/'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/static/scripts/'): {},
   }) %}
   {{ res | to_json }}
 cops_django_sync_theme_contents_webpack: |-
   {% set res = {} %}
   {% set _ = res.update({
-    "{0}/{1}".format(cops_django_project_dir, '/webpack-stats.json'): {},
+    "{0}/{1}".format(cops_django_front_dir, '/webpack-stats.json'): {},
     'webpack-stats.json': {},
   }) %}
   {% set _ = res.update(cops_django_sync_theme_contents_front) %}
   {{ res | to_json }}
 cops_django_sync_theme_contents: {}
 #
-# teleport vars (duplicate environment to another
+# teleport vars (duplicate environment to another)
 #
-teleport_mode: standard
-# teleport_mode: standard|makinastates
+teleport_sshcmd: ssh
+teleport_rsynccmd: rsync
+teleport_mode: default
+# handle retrocompatibility within teleport modes
+teleport_modes_mapper: {standard: default}
+_teleport_mode: "{{teleport_modes_mapper.get(teleport_mode, teleport_mode)}}"
+teleport_reset_perms: true
+teleport_db_mode: "{{cops_django_generic_db_mode}}"
+teleport_ms_project: "{{cops_django_name}}"
+teleport_services: [cron, "{{teleport_app_container}}"]
+teleport_stop_services: "{{teleport_services}}"
+teleport_restart_services: "{{teleport_services}}"
+# teleport_mode: default|makinastates
 # teleport_origin: <origin from where we restore>
 # teleport_destination: <destination to restore>
-teleport_origin_dir: "/srv/nobackup/teleport"
-teleport_origin_dump_path: "{{teleport_origin_dir}}/dump.gz"
-teleport_destination_dir: "/srv/nobackup/teleport"
-teleport_destination_dump_path: "{{teleport_destination_dir}}/dump.gz"
-teleport_origin_dump_script: |-
-  set -ex
-  cd "{{teleport_origin_dir}}"
-  {{teleport_origin_db_pgdump_script}}
-  cd "{{teleport_origin_dir}}"
-  gzip -f dump
-teleport_origin_db_pgdump_script: |-
-  {% if teleport_mode in ['makinastates'] %}
+teleport_wd: "{{(
+  ansible_connection|default('ssh') in ['local'] and
+  (playbook_dir|copsf_dirname|copsf_dirname) or
+  cops_django_dir)}}"
+teleport_orig_wd: "{{teleport_wd}}"
+teleport_data_dir: "{{teleport_wd}}/local/nobackup/teleport"
+teleport_paths_dest_dump_mysql: "/var/lib/mysql/dbdumps"
+teleport_paths_dest_dump_postgres: "/var/lib/postgresql/data/dbdumps"
+teleport_paths_origin_dump: "{{teleport_data_dir}}/dumps"
+teleport_paths_ms_origin_dump: "/srv/projects/{{teleport_ms_project}}/data/nobackup/teleport/dumps"
+teleport_ms_medias_dir: "/srv/projects/{{teleport_ms_project}}/data/media"
+teleport_db_container: db
+teleport_docker_medias_dir: "/var/lib/docker/volumes/{{cops_django_composename}}_mediafiles/_data"
+teleport_container_medias_dir: /code/public/media
+teleport_app_container: django
+teleport_paths_makinastates:
+  origin_dump: "{{teleport_paths_ms_origin_dump}}"
+  origin_medias: "{{teleport_ms_medias_dir}}"
+teleport_paths_default:
+  origin_dump: "{{teleport_paths_origin_dump}}"
+  origin_medias: "{{teleport_docker_medias_dir}}"
+teleport_paths_common:
+  dest_dump: "{{lookup('vars', 'teleport_paths_dest_dump_'+teleport_db_mode)}}"
+  dest_medias: "{{teleport_container_medias_dir}}"
+  dump_file: dump.gz
+teleport_paths: "{{teleport_paths_common|combine(lookup('vars', 'teleport_paths_'+_teleport_mode))}}"
+teleport_paths_origin_dump_file: "{{teleport_paths.origin_dump}}/{{teleport_paths.dump_file}}"
+teleport_paths_dest_dump_file: "{{teleport_paths.dest_dump}}/{{teleport_paths.dump_file}}"
+teleport_rsync_args: "-azv --delete --delete-after"
+teleport_rsync_extra_args: ""
+teleport_destination_ansible_host: "{{groups[teleport_destination][0]}}"
+teleport_origin_ansible_host: "{{groups[teleport_origin][0]}}"
+teleport_destination_host: "{{hostvars[teleport_destination_ansible_host]['ansible_host'] or teleport_destination_ansible_host}}"
+teleport_origin_host: "{{hostvars[teleport_origin_ansible_host].get('ansible_host', teleport_origin_ansible_host)}}"
+teleport_dc: "{{cops_django_dc}}"
+teleport_owner: "{{cops_django_medias_owner}}"
+teleport_group: "{{cops_django_medias_group}}"
+teleport_use_host: "{{ansible_distribution != 'MacOSX'}}"
+teleport_sync_db_files_default:
+  dump:
+    origin_path: "{{teleport_paths.origin_dump}}/"
+    container: "{{teleport_db_container}}"
+    container_path: "{{teleport_paths.dest_dump}}/"
+teleport_sync_files_default:
+  medias:
+    origin_path: "{{teleport_paths.origin_medias}}/"
+    container: "{{teleport_app_container}}"
+    container_path: "{{teleport_paths.dest_medias}}/"
+teleport_sync_db_files: "{{teleport_sync_db_files_default}}"
+teleport_sync_files: "{{teleport_sync_files_default}}"
+teleport_ssh_key_path: "{{teleport_wd}}/local/.ssh/deploy"
+teleport_ssh_origin_key_path: "{{(
+  teleport_ssh_key_path or
+    hostvars[groups[teleport_origin][0]].get('ansible_ssh_private_key_file', ''))}}"
+teleport_ssh_destination_key_path: "{{(
+  teleport_ssh_key_path or
+    hostvars[groups[teleport_destination][0]].get(
+      'ansible_ssh_private_key_file', ''))}}"
+teleport_sshkey_stripper: "-i [^ ]+"
+teleport_origin_sshargs_withoutkey: "{{teleport_origin_sshargs_default|regex_replace( teleport_sshkey_stripper, '')}}"
+teleport_destination_sshargs_withoutkey: "{{teleport_destination_sshargs_default|regex_replace( teleport_sshkey_stripper, '')}}"
+# as we connect not from bastion, dont use by default the key version one
+teleport_origin_sshargs: "{{teleport_origin_sshargs_withoutkey}}"
+teleport_sshargs: "{{teleport_origin_sshargs}}"
+teleport_destination_sshargs:  "{{teleport_destination_sshargs_withoutkey}}"
+teleport_origin_dump_scripts_postgres: |-
+  {% if not teleport_origin_db_is_docker %}
+  cd "{{teleport_paths_origin_dump}}"
   {% if teleport_origin_db_password %}PGPASSWORD="{{teleport_origin_db_password}}"{% endif %} \
   pg_dump \
-    --dbname="{{teleport_origin_db_name}}" --user="{{teleport_origin_db_user}}" \
-    --host="{{teleport_origin_db_host}}" --port="{{teleport_origin_db_port}}" -Fc>dump
+    --host="{{teleport_origin_db_host}}" \
+    --port="{{teleport_origin_db_port}}" \
+    --username="{{teleport_origin_db_user}}" \
+    --dbname="{{teleport_origin_db_name}}" \
+    -Fc > {{teleport_paths.origin_dump}}/dump
   {% else %}
-  cd "{{cops_django_dir}}"
-  {{cops_django_dc}} exec -T db pg_dump -U {{cops_django_db_user}} -Fc {{cops_django_db_name}} > "{{teleport_origin_dir}}/dump"
+  cd "{{teleport_wd}}"
+  {{teleport_dc}} exec -T {{teleport_db_container}} pg_dump \
+    --username="{{teleport_origin_db_user}}" \
+    --dbname="{{teleport_origin_db_name}}" \
+    -Fc > {{teleport_paths.origin_dump}}/dump
   {% endif %}
+teleport_origin_dump_script_compress: |-
+  gzip -c {{teleport_paths.origin_dump}}/dump \
+  > "{{teleport_paths_origin_dump_file}}"
+  rm -fv {{teleport_paths.origin_dump}}/dump
+teleport_origin_dump_script: |-
+  set -ex
+  {{lookup('vars', 'teleport_origin_dump_scripts_'+teleport_db_mode)}}
+  {{teleport_origin_dump_script_compress}}
 teleport_origin_db_host: "{{cops_django_db_host}}"
 teleport_origin_db_port: "{{cops_django_db_password}}"
-teleport_origin_db_db: "{{cops_django_db_host}}"
 teleport_origin_db_user: "{{cops_django_db_user}}"
 teleport_origin_db_password: "{{cops_django_db_password}}"
 teleport_origin_db_name: "{{cops_django_db_name}}"
-teleport_origin_db_is_docker: "{{teleport_mode in ['standard'] and True or False}}"
+## standard is for retrocompat
+teleport_origin_db_is_docker: "{{_teleport_mode in ['default', 'standard']}}"
 teleport_origin_db_dockername: "{{cops_django_name}}_db_1"
-teleport_pg_restore_drop_db: true
-teleport_django_fakeinitial: true
-teleport_pg_restore: >-
-  {% if teleport_pg_restore_drop_db%}
-  dropdb -U $POSTGRES_USER {{cops_django_name}} &&
-  createdb -U $POSTGRES_USER -O $POSTGRES_USER {{cops_django_db_name}}
-  -E {{teleport_db_encoding}} &&
-  {%endif%}
-  zcat /tmp/dump.gz | pg_restore
-  --no-owner --no-privileges --no-acl
-  {% if not teleport_pg_restore_drop_db%} --clean --if-exists{%endif%}
-  -U $POSTGRES_USER -d {{cops_django_db_name}}
 teleport_db_encoding: 'UTF-8'
-teleport_ms_medias_dir: "/srv/projects/{{cops_django_name}}/data/media/"
-teleport_docker_medias_dir: "/var/lib/docker/volumes/{{cops_django_name}}_mediafiles/_data/"
-teleport_origin_medias_dir: "{% if teleport_mode in ['makinastates'] %}{{teleport_ms_medias_dir}}{%else%}{{teleport_docker_medias_dir}}{%endif%}"
-teleport_destination_medias_dir: "{{teleport_docker_medias_dir}}"
+teleport_pg_restore_drop_db: true
 teleport_origin_sshargs_default: >-
   {% set h = groups[teleport_origin][0] %}
-  {% set k = hostvars[h].get(
-                'ansible_ssh_private_key_file', '') %}
+  {% set k = teleport_ssh_origin_key_path%}
   {% if k%}-o IdentityFile={{k}} -o IdentitiesOnly=yes{%endif%}
+  -o StrictHostKeyChecking=no
   {% if (
       hostvars[h].ansible_connection|default('ssh')
      ) not in [ 'smart', 'local'] %}
@@ -281,8 +355,8 @@ teleport_origin_sshargs_default: >-
   {% endif %}
 teleport_destination_sshargs_default: >-
   {% set h = groups[teleport_destination][0] %}
-  {% set k = hostvars[h].get(
-                'ansible_ssh_private_key_file', '') %}
+  {% set k = teleport_ssh_destination_key_path%}
+  -o StrictHostKeyChecking=no
   {% if k%}-o IdentityFile={{k}} -o IdentitiesOnly=yes{%endif%}
   {% if (
       hostvars[h].ansible_connection|default('ssh')
@@ -298,21 +372,74 @@ teleport_destination_sshargs_default: >-
   {% set user = cops_django_sync_ssh_user or ansible_user or '' %}
   {% if user %}-l {{user}}{% endif %}
   {% endif %}
-teleport_sshkey_stripper: "-i [^ ]+"
-teleport_origin_sshargs_withoutkey: "{{teleport_origin_sshargs_default|regex_replace(
-  teleport_sshkey_stripper, '')}}"
-teleport_destination_sshargs_withoutkey: "{{teleport_destination_sshargs_default|regex_replace(
-  teleport_sshkey_stripper, '')}}"
-# as we connect not from bastion, dont use by default the key version one
-teleport_origin_sshargs: "{{teleport_origin_sshargs_withoutkey}}"
-teleport_destination_sshargs:  "{{teleport_destination_sshargs_withoutkey}}"
+teleport_django_fakeinitial: true
 teleport_post_reset_script_default: |-
   set -ex
   {% if teleport_django_fakeinitial %}
-  cd {{cops_django_dir}};
-  {{cops_django_dc}} run \
-  -u django --no-deps --rm django sh -ec \
-  '/code/venv/bin/python ./manage.py migrate --fake-initial'
+  cd {{teleport_wd}};
+  cat|COMPOSE_INTERACTIVE_NO_CLI= {{teleport_dc}} \
+  run -u django --no-deps --rm {{teleport_app_container}} sh -ex - <<EOF
+  . /code/venv/bin/activate && \
+  python ./manage.py migrate --fake-initial
+  EOF
   {%endif%}
+  export COMPOSE_INTERACTIVE_NO_CLI=1
+teleport_pg_restore_clean: true
+teleport_pg_restore_flags: >-
+  -U \$POSTGRES_USER -d \$POSTGRES_DB
+  --no-owner --no-privileges --no-acl
+  {% if teleport_pg_restore_clean%}--clean --if-exists{%endif%}
+teleport_pg_restore: |-
+  {% if teleport_pg_restore_drop_db%}
+  ( LANG=C dropdb -U \$POSTGRES_USER \$POSTGRES_DB 2>&1 || /bin/true; ) \
+  | ( egrep -v exist || /bin/true )
+  createdb -U \$POSTGRES_USER -O \$POSTGRES_USER -E {{teleport_db_encoding}} \
+    \$POSTGRES_DB
+  {%endif%}
+  zcat {{teleport_paths_dest_dump_file}}|pg_restore {{teleport_pg_restore_flags}}
+teleport_reset_db_script_restore_postgres: |-
+  set -ex
+  cd "{{teleport_wd}}"
+  cat|COMPOSE_INTERACTIVE_NO_CLI= {{teleport_dc}} \
+  exec -T {{teleport_db_container}} sh -ex - <<EOF
+  {{teleport_pg_restore}}
+  EOF
+teleport_clean_dump: false
+teleport_reset_db_script_default: |-
+  set -ex
+  {{lookup('vars', 'teleport_reset_db_script_restore_'+teleport_db_mode)}}
+  {% if teleport_clean_dump %}
+  cd "{{teleport_wd}}"
+  {{teleport_dc}} \
+  exec -T {{teleport_db_container}} rm -f "{{teleport_paths_dest_dump_file}}"
+  {% endif %}
+teleport_restart_script_default: |-
+  set -ex
+  cd "{{teleport_wd}}"
+  {% for i in teleport_restart_services %}
+  {{teleport_dc}} stop {{i}}
+  {{teleport_dc}} up -d --force-recreate --no-deps {{i}}
+  {% endfor %}
+teleport_restart_script: "{{teleport_restart_script_default}}"
+teleport_stop_script_default: |-
+  set -ex
+  cd "{{teleport_wd}}"
+  {% for i in teleport_stop_services %}
+  {{teleport_dc}} stop {{i}}
+  {% endfor %}
+teleport_stop_script: "{{teleport_stop_script_default}}"
+teleport_reset_db_script: "{{teleport_reset_db_script_default}}"
 teleport_post_reset_script: "{{teleport_post_reset_script_default}}"
-###
+teleport_db_restart_script: |-
+  set -ex
+  cd "{{teleport_wd}}"
+  {{teleport_dc}} stop {{teleport_db_container}}
+  {{teleport_dc}} up -d --force-recreate --no-deps {{teleport_db_container}}
+teleport_deploy_ssh_key_paths: |-
+  {%- set ret = cops_deploy_ssh_key_paths|copsf_deepcopy %}
+  {%- for r, rdata in ret.items() %}
+  {%- set _ = rdata.update(
+    {'path': teleport_wd+'/local/.ssh/'+r}) %}
+  {%- endfor %}
+  {{- ret | to_json }}
+teleport_dryrun: false

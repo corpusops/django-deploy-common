@@ -6,80 +6,82 @@
     - include_role: {name: django_vars, public: y}
       tags: [backup, backup_vars]
     - block:
+      - when: "teleport_debug|default(false)"
+        debug: {msg: "{{teleport_paths}}"}
       - file:
           state: directory
-          mode: 750
-          path: "{{teleport_origin_dir}}"
+          mode: "750"
+          path: "{{teleport_paths.origin_dump}}"
       - shell: "{{teleport_origin_dump_script}}"
+        name: "Make DB dump on source"
         no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
       tags: [backup, backup_db]
-      # sync medias
 - hosts: "{{teleport_destination}}"
   roles: [corpusops.roles/ansible_plugins]
   tasks:
   - include_role: {name: django_vars, public: y}
-  - file:
-      state: directory
-      mode: 751
-      path: "{{teleport_destination_medias_dir}}"
-    tags: [sync, sync_media]
-  - shell: |-
-      set -ex
-      rsync -azv -e "ssh {{teleport_origin_sshargs}}" \
-      "{{hostvars[groups[teleport_origin][0]]['ansible_host']}}:{{teleport_origin_medias_dir}}/" \
-      "{{teleport_destination_medias_dir}}/"
-    no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
-    tags: [sync, sync_media]
-  # sync db
+    tags: [reset, sync, sync_vars]
+  # ssh key setup for rsync over ssh transfer
   - block:
-    - file:
-        state: directory
-        mode: 751
-        path: "{{teleport_destination_dir}}"
-      tags: [sync, sync_dump]
-  - shell: |-
-      set -ex
-      rsync -azv -e "ssh {{teleport_origin_sshargs}}" \
-      "{{hostvars[groups[teleport_origin][0]]['ansible_host']}}:{{teleport_origin_dir}}/*z" \
-      "{{teleport_destination_dir}}/"
-    no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
-    tags: [sync, sync_dump]
-  - shell: |-
-      set -ex
-      cd "{{cops_django_dir}}"
-      {{cops_django_dc}} stop django
-      {{cops_django_dc}} stop cron
-    tags: [reset, stop]
-  - shell: |-
-      set -ex
-      while read f;do
-        chown -Rvf {{cops_django_medias_owner}}:{{cops_django_medias_group}} "$f"
-      done < \
-      <( find "{{teleport_destination_medias_dir}}" \
-        \( -not -uid {{cops_django_medias_owner}} -or \
-           -not -gid {{cops_django_medias_group}} \) )
-      while read f;do chmod -v o+x $f;done < \
-      <(find "{{teleport_destination_medias_dir}}" -type d -and -not -perm -o+x)
-      while read f;do chmod -v o+rx $f;done < \
-      <(find "{{teleport_destination_medias_dir}}" -type f -and -not -perm -o+rx)
-    args: {executable: /bin/bash}
-    tags: [reset, reset_media_perms]
-  - shell: |-
-      set -ex
-      cd "{{cops_django_dir}}"
-      cat "{{teleport_destination_dump_path}}" \
-        | {{cops_django_dc}} exec -T db sh -c 'cat>/tmp/dump.gz'
-      COMPOSE_INTERACTIVE_NO_CLI=1 {{cops_django_dc}} \
-        exec -T db sh -c '{{teleport_pg_restore}}'
-      {{cops_django_dc}} exec -T db rm -f /tmp/dump.gz
-    args: {executable: /bin/bash}
+    - debug: {var: teleport_deploy_ssh_key_paths}
+      register: s
+    - include_role: {name: corpusops.roles/project/_deploy_key_setup}
+      name: "Deploy SSH key"
+      vars: {cops_deploy_ssh_key_paths: "{{s.teleport_deploy_ssh_key_paths}}"}
+    tags: [reset, ssh_setup]
+  # stop django first
+  - when: "teleport_do_stop_services|default(true)"
+    name: "Stopping APP services"
+    shell: "{{teleport_stop_script}}"
+    tags: [reset, stop_services]
+  # database dump xfer
+  - when: "teleport_do_sync_db|default(true)"
+    tags: [reset, sync_db]
+    vars: {teleport_items: "{{teleport_sync_db_files}}"}
+    block:
+    - include_role: {name: django/roles/docker_container_transfer}
+      name: "XFER dump"
+      tags: [reset, xfer_dumps]
+    - include_role: {name: django/roles/docker_container_fixperms}
+      name: "DB fixperms"
+      tags: [reset, fixperms_db]
+  # database reset from dump
+  - when: "teleport_do_reset_db|default(true)"
     tags: [reset, reset_db]
-  - shell: "{{teleport_post_reset_script}}"
-    tags: [reset, post_script]
-  - shell: |-
-      set -ex
-      cd "{{cops_django_dir}}"
-      {{cops_django_dc}} start django
-      {{cops_django_dc}} start cron
-    tags: [reset, restart]
-
+    block:
+    - when: "teleport_do_db_restart|default(true)"
+      name: "DB restart"
+      shell: "{{teleport_db_restart_script}}"
+      args: {executable: /bin/bash}
+      tags: [reset, db_restart]
+    - when: "teleport_do_load_dump|default(true)"
+      name: "Load dump"
+      shell: "{{teleport_reset_db_script}}"
+      args: {executable: /bin/bash}
+      tags: [reset, load_dump]
+  # medias transfer
+  - when: "teleport_do_sync_medias|default(true)"
+    vars: {teleport_items: "{{teleport_sync_files}}"}
+    tags: [reset, sync_medias]
+    block:
+    - include_role: {name: django/roles/docker_container_transfer}
+      name: "XFER medias"
+      tags: [reset, xfer_medias]
+    - include_role: {name: django/roles/docker_container_fixperms}
+      name: "Fixperms medias"
+      tags: [reset, fixperms_medias]
+  # - {when: "teleport_debug|default(false)", pause: {}}
+  # post reset scripts
+  - when: "teleport_post_reset|default(true)"
+    tags: [reset, post_reset]
+    block:
+    - when: "teleport_do_post_reset_script|default(true)"
+      name: "Post reset"
+      shell: "{{teleport_post_reset_script}}"
+      args: {executable: /bin/bash}
+      tags: [reset, post_script]
+    - when: "teleport_do_post_reset_restart|default(true)"
+      name: "Restart services"
+      shell: "{{teleport_restart_script}}"
+      args: {executable: /bin/bash}
+      tags: [reset, reset_restart]
