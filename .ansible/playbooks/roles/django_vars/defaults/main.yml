@@ -228,7 +228,7 @@ _teleport_mode: "{{teleport_modes_mapper.get(teleport_mode, teleport_mode)}}"
 teleport_reset_perms: true
 teleport_db_mode: "{{cops_django_generic_db_mode}}"
 teleport_ms_project: "{{cops_django_name}}"
-teleport_services: [cron, "{{teleport_app_container}}"]
+teleport_services: [cron, "{{teleport_app_container}}", nginx]
 teleport_stop_services: "{{teleport_services}}"
 teleport_restart_services: "{{teleport_services}}"
 # teleport_mode: default|makinastates
