@@ -83,8 +83,15 @@ RUN gosu django:django bash -exc ': \
 ADD --chown=django:django .git                         /code/.git
 ADD --chown=django:django sys                          /code/sys
 ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
+
+# if we found a static dist inside the sys directory, it has been injected during
+# the CI process, we just unpack it
 RUN bash -exc ': \
     && cd /code && for i in init;do if [ ! -e $i ];then mkdir -p $i;fi;done \
+    && if [ -e sys/statics ];then\
+     while read f;do tar xzvf ${f};done \
+      < <(find sys/statics -name "*.tgz" -or -name "*.tar.gz"); \
+     fi && rm -rfv sys/statics \
     && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && cp -frnv /code/local/django-deploy-common/sys/* sys \
