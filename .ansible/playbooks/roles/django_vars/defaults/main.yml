@@ -301,7 +301,7 @@ teleport_sshargs: "{{teleport_origin_sshargs}}"
 teleport_destination_sshargs:  "{{teleport_destination_sshargs_withoutkey}}"
 teleport_origin_dump_scripts_postgres: |-
   {% if not teleport_origin_db_is_docker %}
-  cd "{{teleport_paths_origin_dump}}"
+  cd "{{teleport_paths.origin_dump}}"
   {% if teleport_origin_db_password %}PGPASSWORD="{{teleport_origin_db_password}}"{% endif %} \
   pg_dump \
     --host="{{teleport_origin_db_host}}" \
