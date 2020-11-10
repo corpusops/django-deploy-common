@@ -89,6 +89,10 @@ ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy
 RUN bash -exc ': \
     && cd /code && for i in init;do if [ ! -e $i ];then mkdir -p $i;fi;done \
     && if [ -e sys/statics ];then\
+     while read f;do tar xJvf ${f};done \
+      < <(find sys/statics -name "*.txz" -or -name "*.tar.xz"); \
+     while read f;do tar xjvf ${f};done \
+      < <(find sys/statics -name "*.tbz2" -or -name "*.tar.bz2"); \
      while read f;do tar xzvf ${f};done \
       < <(find sys/statics -name "*.tgz" -or -name "*.tar.gz"); \
      fi && rm -rfv sys/statics \
