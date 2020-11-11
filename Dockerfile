@@ -25,8 +25,8 @@ RUN bash -c 'set -ex \
 
 FROM dependencies as pydependencies
 ADD --chown=django:django requirements*.txt tox.ini README.md /code/
-ADD --chown=django:django src /code/src/
-ADD --chown=django:django lib /code/lib/
+# only bring minimal py for now as we get only deps (CI optims)
+ADD --chown=django:django src/*.py /code/src/
 ADD --chown=django:django private /code/private/
 
 ARG PY_VER=3.6
@@ -58,15 +58,26 @@ RUN bash -exc ': \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
     && venv/bin/pip install -U --no-cache-dir setuptools wheel pip\
-    && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
+    && venv/bin/pip install -U --no-cache-dir -r \
+        <( egrep -hv -- "^-e" ./requirements.txt ) \
     && if [[ -n \"$BUILD_DEV\" ]];then \
-      venv/bin/pip install -U --no-cache-dir \
-      -r ./requirements.txt \
-      -r ./requirements-dev.txt\
+      venv/bin/pip install -U --no-cache-dir -r \
+        <( egrep -hv -- "^-e" ./requirements.txt ./requirements-dev.txt ) \
       && if [ "x$WITH_VSCODE" = "x1" ];then venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
       && if [ "x$WITH_PYCHARM" = "x1" ];then venv/bin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
     && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done" && date'
+
+# Install now python deps without editable filter
+ADD --chown=django:django lib /code/lib/
+ADD --chown=django:django src /code/src/
+RUN bash -exc 'gosu django:django bash -exc ": \
+  && . venv/bin/activate \
+  && venv/bin/pip install -U --no-cache-dir -r ./requirements.txt \
+  && if [[ -n \"$BUILD_DEV\" ]];then \
+     venv/bin/pip install -U --no-cache-dir \
+        -r ./requirements.txt -r ./requirements-dev.txt; \
+  fi"'
 
 FROM pydependencies as appsetup
 # django basic setup
