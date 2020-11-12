@@ -91,9 +91,9 @@ RUN gosu django:django bash -exc ': \
     && cd - \
     '
 
-ADD --chown=django:django .git                   /code/.git
-ADD --chown=django:django sys                    /code/sys
-ADD --chown=django:django local/*deploy-common/  /code/local/deploy-common/
+ADD --chown=django:django .git                         /code/.git
+ADD --chown=django:django sys                          /code/sys
+ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
 
 # if we found a static dist inside the sys directory, it has been injected during
 # the CI process, we just unpack it
@@ -111,10 +111,8 @@ RUN bash -exc ': \
     | while read f;do chown django:django "$f";done \
     && cp -frnv /code/local/*deploy-common/sys/* sys \
     && cp -frnv sys/* init \
-    && find sys/etc/cron.d -type f| xargs chmod -vf 0644 \
+    && find sys/etc/cron.d -type f|xargs chmod -vf 0644 \
     && ln -sf $(pwd)/init/init.sh /init.sh'
-
-# image will drop privileges itself using gosu
 
 WORKDIR /code/src
 
@@ -127,4 +125,5 @@ RUN \
   fi \
   && rm -rf /var/lib/apt/lists/*
 
+# image will drop privileges itself using gosu at the end of the entrypoint
 CMD "/init.sh"
