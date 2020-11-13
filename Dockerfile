@@ -91,6 +91,15 @@ RUN gosu django:django bash -exc ': \
     && cd - \
     '
 
+# Final cleanup, only work if using the docker build --squash option
+ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies'
+RUN \
+  set -ex && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
+    apt-get remove --auto-remove --purge \
+      $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|tr "\n" " ");\
+  fi \
+  && rm -rf /var/lib/apt/lists/*
+
 ADD --chown=django:django .git                         /code/.git
 ADD --chown=django:django sys                          /code/sys
 ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
@@ -115,15 +124,6 @@ RUN bash -exc ': \
     && ln -sf $(pwd)/init/init.sh /init.sh'
 
 WORKDIR /code/src
-
-# Final cleanup, only work if using the docker build --squash option
-ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies'
-RUN \
-  set -ex && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
-    apt-get remove --auto-remove --purge \
-      $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|tr "\n" " ");\
-  fi \
-  && rm -rf /var/lib/apt/lists/*
 
 # image will drop privileges itself using gosu at the end of the entrypoint
 CMD "/init.sh"
