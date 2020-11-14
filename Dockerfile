@@ -18,7 +18,7 @@ RUN bash -c 'set -ex \
     && : "install packages" \
     && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" /code/apt.txt \
     && apt-get update -qq \
-    && apt-get install -qq -y $(grep -vE "^\s*#" /code/apt.txt  | tr "\n" " ") \
+    && apt-get install -qq -y $(grep -vE "^\s*#" /code/apt.txt|tr "\n" " ") \
     && apt-get clean all && apt-get autoclean \
     && : "project user & workdir" \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
@@ -27,7 +27,7 @@ FROM dependencies as pydependencies
 ADD --chown=django:django requirements*.txt tox.ini README.md /code/
 # only bring minimal py for now as we get only deps (CI optims)
 ADD --chown=django:django src/*.py /code/src/
-ADD --chown=django:django private /code/private/
+ADD --chown=django:django private  /code/private/
 
 ARG PY_VER=3.6
 # See https://github.com/nodejs/docker-node/issues/380
@@ -117,5 +117,14 @@ RUN bash -exc ': \
 CMD chmod 0644 /etc/cron.d/django
 
 WORKDIR /code/src
+
+# Final cleanup, only work if using the docker build --squash option
+ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies'
+RUN \
+  set -ex && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
+    apt-get remove --auto-remove --purge \
+      $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|tr "\n" " ");\
+  fi \
+  && rm -rf /var/lib/apt/lists/*
 
 CMD "/init.sh"
