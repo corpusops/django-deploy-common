@@ -100,7 +100,6 @@ RUN \
   fi \
   && rm -rf /var/lib/apt/lists/*
 
-ADD --chown=django:django .git                         /code/.git
 ADD --chown=django:django sys                          /code/sys
 ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
 
@@ -124,6 +123,6 @@ RUN bash -exc ': \
     && ln -sf $(pwd)/init/init.sh /init.sh'
 
 WORKDIR /code/src
-
+ADD --chown=django:django .git                         /code/.git
 # image will drop privileges itself using gosu at the end of the entrypoint
 CMD "/init.sh"
