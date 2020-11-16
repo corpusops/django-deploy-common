@@ -24,7 +24,7 @@ RUN bash -c 'set -ex \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
 FROM dependencies as pydependencies
-ADD --chown=django:django requirements* *.ini README* /code/
+ADD --chown=django:django setup.* requirements* *.ini README* /code/
 # only bring minimal py for now as we get only deps (CI optims)
 ADD --chown=django:django src/*.py /code/src/
 ADD --chown=django:django private  /code/private/
@@ -82,7 +82,8 @@ RUN bash -exc 'gosu django:django bash -exc ": \
   && devreqs=$(ls requirements-dev.txt || ls requirements/requirements-dev.txt ) \
   && reqs=$(ls requirements.txt || ls requirements/requirements.txt ) \
   && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
-  && if [[ -n \"$BUILD_DEV\" ]];then venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs};fi"'
+  && if [[ -n \"$BUILD_DEV\" ]];then venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs};fi \
+  && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi"'
 
 FROM pydependencies as appsetup
 # django basic setup
