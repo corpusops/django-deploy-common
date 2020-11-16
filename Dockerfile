@@ -62,10 +62,10 @@ RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
+    && if [ ! -e requirements ];then mkdir requirements;cp -v requirements.txt requirements-dev.txt requirements;fi \
     && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIP_REQ}\" \
-    && reqs=$(ls requirements.txt || ls requirements/requirements.txt ) \
-    && devreqs=$(ls requirements-dev.txt || ls requirements/requirements-dev.txt ) \
-    && req=\${reqs:?missing reqs} && devreqs=\${devreqs:?missing dev reqs} \
+    && devreqs=requirements/requirements-dev.txt \
+    && reqs=requirements/requirements.txt \
     && venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} ) \
     && if [[ -n \"$BUILD_DEV\" ]];then \
       venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} \${devreqs} ) \
@@ -79,8 +79,8 @@ ADD --chown=django:django lib /code/lib/
 ADD --chown=django:django src /code/src/
 RUN bash -exc 'gosu django:django bash -exc ": \
   && . venv/bin/activate \
-  && devreqs=$(ls requirements-dev.txt || ls requirements/requirements-dev.txt ) \
-  && reqs=$(ls requirements.txt || ls requirements/requirements.txt ) \
+  && devreqs=requirements/requirements-dev.txt \
+  && reqs=requirements/requirements.txt \
   && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
   && if [[ -n \"$BUILD_DEV\" ]];then venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs};fi \
   && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi"'
