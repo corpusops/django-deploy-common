@@ -58,9 +58,6 @@ ARG WHEEL_VERSION="0.35.1"
 ARG SETUPTOOLS_REQ="setuptools>=${SETUPTOOLS_VERSION}"
 ARG PIP_REQ="pip>=${PIP_VERSION}"
 ARG WHEEL_REQ="wheel>=${WHEEL_VERSION}"
-ENV SETUPTOOLS_REQ=$SETUPTOOLS_REQ
-ENV PIP_REQ=$PIP_REQ
-ENV WHEEL_REQ=$WHEEL_REQ
 RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
