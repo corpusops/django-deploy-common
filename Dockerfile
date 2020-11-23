@@ -102,7 +102,7 @@ ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies'
 RUN \
   set -ex && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
     apt-get remove --auto-remove --purge \
-      $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|tr "\n" " ");\
+      $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|grep -v '^#'|tr "\n" " ");\
   fi \
   && rm -rf /var/lib/apt/lists/*
 
