@@ -24,7 +24,7 @@ RUN bash -c 'set -ex \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
 FROM dependencies as pydependencies
-ADD --chown=django:django setup.* requirements* *.ini README* /code/
+ADD --chown=django:django setup.* requirements/requirements* *.ini README* /code/
 # only bring minimal py for now as we get only deps (CI optims)
 ADD --chown=django:django src/*.py /code/src/
 ADD --chown=django:django private  /code/private/
