@@ -85,6 +85,7 @@ cops_django_email_use_tls: 'no'
 cops_django_http_protect_user: "root"
 cops_django_http_protect_password: "rootroot"
 cops_django_redis_url: "redis://redis:6379/1"
+cops_django_cors_origin_allow_all: "{{cops_django_devmode and 'y' or 'n' }}"
 cops_django_hosts_whitelist: "{{(
     [cops_django_hostname, '0.0.0.0', '.{0}'.format(cops_django_hostname)]+
     cops_django_alternate_hostnames
@@ -115,6 +116,7 @@ cops_django_docker_env_defaults: |-
   PGPASSWORD={{cops_django_db_password }}
   # cors
   DJANGO__CORS_ORIGIN_WHITELIST={{cops_django_hosts_whitelist}}
+  DJANGO__CORS_ORIGIN_ALLOW_ALL={{cops_django_cors_origin_allow_all}}
   DJANGO__COPS_ALL_HOSTNAMES={{cops_django_hostnames}}
   DJANGO__ALLOWED_HOSTS={{cops_django_hosts_whitelist}}
   DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
@@ -126,7 +128,6 @@ cops_django_docker_env_defaults: |-
   DJANGO__SENTRY_TAGS={{cops_django_sentry_tags|join(',')}}
   {% endif %}
   {% if cops_django_devmode %}
-  DJANGO__CORS_ORIGIN_ALLOW_ALL=y
   DJANGO__DEBUG=y
   {% endif %}
   DJANGO__DEFAULT_FROM_EMAIL={{ cops_django_default_from_email }}
