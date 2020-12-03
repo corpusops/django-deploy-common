@@ -58,6 +58,9 @@ ARG MINIMUM_WHEEL_VERSION="0.35.1"
 ARG SETUPTOOLS_REQ="setuptools>=${MINIMUM_SETUPTOOLS_VERSION}"
 ARG PIP_REQ="pip>=${MINIMUM_PIP_VERSION}"
 ARG WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
+# Install now python deps without editable filter
+ADD --chown=django:django lib /code/lib/
+ADD --chown=django:django src /code/src/
 RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
@@ -66,24 +69,14 @@ RUN bash -exc ': \
     && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIP_REQ}\" \
     && devreqs=requirements/requirements-dev.txt \
     && reqs=requirements/requirements.txt \
-    && venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} ) \
+    && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi \
+    && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
     && if [[ -n \"$BUILD_DEV\" ]];then \
-      venv/bin/pip install -U --no-cache-dir -r <( egrep -hv -- "^-e" \${reqs} \${devreqs} ) \
+      venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs} \
       && if [ "x$WITH_VSCODE" = "x1" ];then  venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
       && if [ "x$WITH_PYCHARM" = "x1" ];then venv/bin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
     fi \
     && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done" && date'
-
-# Install now python deps without editable filter
-ADD --chown=django:django lib /code/lib/
-ADD --chown=django:django src /code/src/
-RUN bash -exc 'gosu django:django bash -exc ": \
-  && . venv/bin/activate \
-  && devreqs=requirements/requirements-dev.txt \
-  && reqs=requirements/requirements.txt \
-  && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
-  && if [[ -n \"$BUILD_DEV\" ]];then venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs};fi \
-  && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi"'
 
 FROM pydependencies as appsetup
 # django basic setup
