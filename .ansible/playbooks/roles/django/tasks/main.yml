@@ -9,6 +9,7 @@
   - "{{cops_django_dir}}/local/backup"
   - "{{cops_django_dir}}/local/backup/data"
   - "{{cops_django_dir}}/local/backup/setup"
+  tags: [django_layout_dirs]
 - name: Synchronise files inside the environment (deleguation)
   delegate_to: "localhost"
   synchronize:
@@ -19,7 +20,7 @@
     rsync_opts: "{{cops_django_code_rsync_opts}}"
     set_remote_user: "no"
     #update_opts: '--recursive'
-  tags: [django_sync]
+  tags: [django_sync, django_sync_code]
 - include_tasks: sync_content.yml
   when: cops_django_sync_theme_contents|length|copsf_asbool
   loop: "{{cops_django_sync_theme_contents|dict2items}}"
@@ -29,16 +30,19 @@
     dest: "{{cops_django_dir}}/local/backup/setup/reconfigure.yml"
     mode: "0640"
     trim_blocks: false
+  tags: [django_conf]
 - template:
     src: "local.py"
     dest: "{{cops_django_dir}}/local.py"
     mode: "0644"
     trim_blocks: false
+  tags: [django_conf]
 - template:
     src: "docker.env"
     dest: "{{cops_django_dir}}/docker.env"
     mode: "0640"
     trim_blocks: false
+  tags: [django_conf]
 - blockinfile:
     create: true
     path: "{{cops_django_dir}}/.env"
@@ -46,8 +50,10 @@
       {{cops_django_dotenv}}
       {{cops_django_dotenv_extra}}
     marker: "# ANSIBLE MANAGED BLOCK :: deploy commit :: {mark}"
+  tags: [django_conf]
 - include_tasks: docker_login.yml
   loop: "{{cops_django_registries}}"
+  tags: [django_docker, django_docker_login]
 - shell: |
     set -ex
     cd "{{cops_django_dir}}"
@@ -55,6 +61,7 @@
   when:
   - "cops_django_build|copsf_asbool"
   - "cops_django_build_args|copsf_asbool"
+  tags: [django_docker, django_docker_build]
 # ensure all images are (re) pulled
 - shell: |
     set -ex
@@ -64,6 +71,7 @@
   delay: 10
   when:
   - "cops_django_pull|copsf_asbool"
+  tags: [django_docker, django_docker_pull]
 - include_role: {name: corpusops.roles/docker_compose_service}
   vars:
     _docker_compose_service:
@@ -92,6 +100,7 @@
     done
     if [ "x$ret" != "x0" ];then echo "{{i}}: failed restart";exit 1;fi
     {% endfor %}
+  tags: [django_service_restart, django_service, service]
 - shell: |
     set -ex
     cd "{{cops_django_dir}}"
