@@ -239,15 +239,18 @@ teleport_wd: "{{(
   ansible_connection|default('ssh') in ['local'] and
   (playbook_dir|copsf_dirname|copsf_dirname) or
   cops_django_dir)}}"
-teleport_orig_wd: "{{teleport_wd}}"
+teleport_orig_wd: "{{cops_django_dir}}"
+teleport_orig_composename: "{{cops_django_name}}"
 teleport_data_dir: "{{teleport_wd}}/local/nobackup/teleport"
+teleport_orig_data_dir: "{{teleport_orig_wd}}/local/nobackup/teleport"
 teleport_paths_dest_dump_mysql: "/var/lib/mysql/dbdumps"
 teleport_paths_dest_dump_postgres: "/var/lib/postgresql/data/dbdumps"
-teleport_paths_origin_dump: "{{teleport_data_dir}}/dumps"
+teleport_paths_origin_dump: "{{teleport_orig_data_dir}}/dumps"
+teleport_paths_dump: "{{teleport_wd}}/dumps"
 teleport_paths_ms_origin_dump: "/srv/projects/{{teleport_ms_project}}/data/nobackup/teleport/dumps"
 teleport_ms_medias_dir: "/srv/projects/{{teleport_ms_project}}/data/media"
 teleport_db_container: db
-teleport_docker_medias_dir: "/var/lib/docker/volumes/{{cops_django_composename}}_mediafiles/_data"
+teleport_docker_medias_dir: "/var/lib/docker/volumes/{{teleport_orig_composename}}_mediafiles/_data"
 teleport_container_medias_dir: /code/public/media
 teleport_app_container: django
 teleport_paths_makinastates:
