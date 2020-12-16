@@ -27,7 +27,7 @@ FROM dependencies as pydependencies
 
 ARG PY_VER=3.6
 # See https://github.com/nodejs/docker-node/issues/380
-ARG PIP_SRC=/code/lib
+ARG PIP_SRC=/code/pipsrc
 ENV PIP_SRC=$PIP_SRC
 ARG BUILD_DEV=
 ARG VSCODE_VERSION=
