@@ -97,7 +97,7 @@ RUN bash -exc ': \
     fi \
     && if [ \"x$WITH_VSCODE\" = \"x1\" ];then  venv/bin/python -m pip install -U \"ptvsd${VSCODE_VERSION}\";fi \
     && if [ \"x$WITH_PYCHARM\" = \"x1\" ];then venv/bin/python -m pip install -U \"pydevd-pycharm${PYCHARM_VERSION}\";fi \
-    && if [ -e setup.py ];then venv/bin/python -m pip install -e --no-deps .;fi \
+    && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi \
     && date \
     "'
 
