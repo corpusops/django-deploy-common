@@ -64,12 +64,15 @@
     vars: {teleport_items: "{{teleport_sync_files}}"}
     tags: [reset, sync_medias]
     block:
+    - include_role: {name: django/roles/docker_container_ifexists, public: y}
+      name: "XFER IFEXISTS"
+      tags: [reset, xfer, xfer_ifexists]
     - include_role: {name: django/roles/docker_container_transfer}
       name: "XFER medias"
-      tags: [reset, xfer_medias]
+      tags: [reset, xfer, xfer_medias]
     - include_role: {name: django/roles/docker_container_fixperms}
       name: "Fixperms medias"
-      tags: [reset, fixperms_medias]
+      tags: [reset, xfer, fixperms_medias]
   # - {when: "teleport_debug|default(false)", pause: {}}
   # post reset scripts
   - when: "teleport_post_reset|default(true)"
