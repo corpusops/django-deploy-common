@@ -281,11 +281,13 @@ teleport_sync_db_files_default:
     origin_path: "{{teleport_paths.origin_dump}}/"
     container: "{{teleport_db_container}}"
     container_path: "{{teleport_paths.dest_dump}}/"
+    # only_if_exists: true
 teleport_sync_files_default:
   medias:
     origin_path: "{{teleport_paths.origin_medias}}/"
     container: "{{teleport_app_container}}"
     container_path: "{{teleport_paths.dest_medias}}/"
+    # only_if_exists: true
 teleport_sync_db_files: "{{teleport_sync_db_files_default}}"
 teleport_sync_files: "{{teleport_sync_files_default}}"
 teleport_ssh_key_path: "{{teleport_wd}}/local/.ssh/deploy"
