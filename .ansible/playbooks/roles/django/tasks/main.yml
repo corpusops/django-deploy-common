@@ -48,7 +48,6 @@
     path: "{{cops_django_dir}}/.env"
     content: |-
       {{cops_django_dotenv}}
-      {{cops_django_dotenv_extra}}
     marker: "# ANSIBLE MANAGED BLOCK :: deploy commit :: {mark}"
   tags: [django_conf]
 - include_tasks: docker_login.yml
