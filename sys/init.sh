@@ -1,6 +1,7 @@
 #!/bin/bash
 SDEBUG=${SDEBUG-}
 SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
+ODIR=$(pwd)
 cd "$SCRIPTSDIR/.."
 TOPDIR=$(pwd)
 
@@ -12,6 +13,15 @@ if ( ip -4 route list match 0/0 &>/dev/null );then
     ip -4 route list match 0/0 \
         | awk '{print $3" host.docker.internal"}' >> /etc/hosts
 fi
+
+PYCHARM_DIRS="${PYCHARM_DIRS:-"/opt/pycharm /opt/.pycharm /opt/.pycharm_helpers"}"
+OPYPATH="${PYTHONPATH-}"
+for i in $PYCHARM_DIRS;do
+    if [ -e "$i" ];then
+        IMAGE_MODE="${FORCE_IMAGE_MODE-pycharm}"
+        break
+    fi
+done
 
 # load locales & default env
 # load this first as it resets $PATH
@@ -313,6 +323,17 @@ fi
 # only display startup logs when we start in daemon mode
 # and try to hide most when starting an (eventually interactive) shell.
 if ! ( echo "$NO_STARTUP_LOGS" | egrep -iq "^(no?)?$" );then pre 2>/dev/null;else pre;fi
+
+if [[ $IMAGE_MODE = "pycharm" ]];then
+    export VENV=$VENV
+    cmdargs="$@"
+    for i in ${PYCHARM_DIRS};do if [ -e "$i" ];then chown -Rf $APP_USER "$i";fi;done
+    subshell="set -e"
+    subshell="$subshell;if [ -e \$VENV ];then . \$VENV/bin/activate;fi"
+    subshell="$subshell;export PYTHONPATH=\"$OPYPATH:\${PYTHONPATH-}·\""
+    subshell="$subshell;python $cmdargs"
+    exec gosu $APP_USER bash -lc "$subshell"
+fi
 
 if [[ -z "$@" ]]; then
     if ! ( echo $IMAGE_MODE | egrep -q "$IMAGE_MODES" );then
