@@ -1,5 +1,6 @@
 #!/bin/bash
 SDEBUG=${SDEBUG-}
+DEBUG=${SDEBUG-}
 SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
 ODIR=$(pwd)
 cd "$SCRIPTSDIR/.."
@@ -76,6 +77,7 @@ FINDPERMS_PERMS_DIRS_CANDIDATES="${FINDPERMS_PERMS_DIRS_CANDIDATES:-"public priv
 FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"public private data"}"
 export APP_TYPE="${APP_TYPE:-django}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
+export INIT_HOOKS_DIR="${INIT_HOOKS_DIR:-/code/sys/scripts/hooks}"
 export APP_GROUP="$APP_USER"
 export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
 export USER_DIRS="${USER_DIRS:-". public/media data /logs/cron ${EXTRA_USER_DIRS}"}"
@@ -102,6 +104,9 @@ elif [[ "$DJANGO_CELERY_BROKER" = "redis" ]];then
 fi
 export DJANGO__CELERY_BROKER_URL="${DJANGO__CELERY_BROKER_URL:-$burl}"
 
+debuglog() {
+    if [[ -n "$DEBUG" ]];then echo "$@" >&2;fi
+}
 
 log() {
     echo "$@" >&2;
@@ -304,16 +309,36 @@ if [[ -n ${NO_START-} ]];then
     exit $?
 fi
 
+execute_hooks() {
+    local step="$1"
+    local hdir="$INIT_HOOKS_DIR/${step}"
+    shift
+    while read f;do
+        if ( echo "$f" | egrep -q "\.sh$" );then
+            debuglog "running shell hook($step): $f"
+            . "${f}"
+        else
+            debuglog "running executable hook($step): $f"
+            "$f" "$@"
+        fi
+    done < <(find "$hdir" -type f -executable 2>/dev/null | sort -V; )
+}
+
 # Run app
 pre() {
     configure
+    execute_hooks afterconfigure "$@"
     # fixperms may have to be done on first run
     if ! ( services_setup );then
         fixperms
+        execute_hooks beforeservicessetup "$@"
         services_setup
     fi
+    execute_hooks beforesefixperms "$@"
     fixperms
 }
+
+execute_hooks pre "$@"
 
 # reinstall in develop any missing editable dep
 if [ -e Pipfile ] && ( egrep -q  "editable\s*=\s*true" Pipfile ) && [[ -z "$(ls -1 ${PIP_SRC}/ | grep -vi readme)" ]] && [[ "$NO_PIPENV_INSTALL" != "1" ]];then
@@ -323,6 +348,8 @@ fi
 # only display startup logs when we start in daemon mode
 # and try to hide most when starting an (eventually interactive) shell.
 if ! ( echo "$NO_STARTUP_LOGS" | egrep -iq "^(no?)?$" );then pre 2>/dev/null;else pre;fi
+
+execute_hooks post "$@"
 
 if [[ $IMAGE_MODE = "pycharm" ]];then
     export VENV=$VENV
@@ -335,6 +362,7 @@ if [[ $IMAGE_MODE = "pycharm" ]];then
     subshell="$subshell;python $cmdargs"
     exec gosu $APP_USER bash -lc "$subshell"
 fi
+
 
 if [[ -z "$@" ]]; then
     if ! ( echo $IMAGE_MODE | egrep -q "$IMAGE_MODES" );then
@@ -360,5 +388,6 @@ else
         cmd="$( echo "${cmd}"|sed -r \
             -e "s/-c tests/-exc '.\/manage.py test/" -e "s/$/'/g" )"
     fi
+    execute_hooks beforeshell "$@"
     ( cd $PROJECT_DIR && _shell $SHELL_USER "$cmd" )
 fi
