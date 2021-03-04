@@ -32,13 +32,9 @@ ARG PIP_SRC=/code/pipsrc
 ENV PIP_SRC=$PIP_SRC
 ARG BUILD_DEV=
 ARG VSCODE_VERSION=
-ARG PYCHARM_VERSION=
 ENV VSCODE_VERSION=$VSCODE_VERSION
-ENV PYCHARM_VERSION=$PYCHARM_VERSION
 ARG WITH_VSCODE=0
 ENV WITH_VSCODE=$WITH_VSCODE
-ARG WITH_PYCHARM=0
-ENV WITH_PYCHARM=$WITH_PYCHARM
 ARG CFLAGS=
 ARG CPPLAGS=
 ARG C_INCLUDE_PATH=/usr/include/gdal/
@@ -46,14 +42,12 @@ ARG CPLUS_INCLUDE_PATH=/usr/include/gdal/
 ARG LDFLAGS=
 ARG LANG=fr_FR.utf8
 ENV VSCODE_VERSION="$VSCODE_VERSION" \
-    PYCHARM_VERSION="$PYCHARM_VERSION" \
     WITH_VSCODE="$WITH_VSCODE" \
     CFLAGS="$CFLAGS" \
     CPPLAGS="$CPPFLAGS" \
     C_INCLUDE_PATH="$C_INCLUDE_PATH" \
     CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH" \
     LDFLAGS="$LDFLAGS" \
-    WITH_PYCHARM="$WITH_PYCHARM" \
     LC_ALL="$LANG" \
     LANG="$LANG"
 ARG FORCE_PIP="0"
@@ -96,7 +90,6 @@ RUN bash -exc ': \
        fi; \
     fi \
     && if [ \"x$WITH_VSCODE\" = \"x1\" ];then  venv/bin/python -m pip install -U \"ptvsd${VSCODE_VERSION}\";fi \
-    && if [ \"x$WITH_PYCHARM\" = \"x1\" ];then venv/bin/python -m pip install -U \"pydevd-pycharm${PYCHARM_VERSION}\";fi \
     && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi \
     && date \
     "'
