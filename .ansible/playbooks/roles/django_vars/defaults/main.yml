@@ -157,7 +157,6 @@ cops_django_dotenv: |-
   DJANGO_PY_VER={{ cops_django_py_ver }}
   DJANGO_NAME={{ cops_django_name }}
   COMPOSE_PROJECT_NAME={{cops_django_composename}}
-  CONTROL_COMPOSE_FILES={{cops_django_compose_files|join(' ')}}
   CI_COMMIT_SHA={{cops_django_gitref}}
   DJANGO_IMAGE={{ cops_django_docker_image }}
   DJANGO_IMAGE_VERSION={{cops_django_docker_tag}}
