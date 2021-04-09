@@ -1,5 +1,5 @@
 - debug: {msg: "{{teleport_items }}"}
-  when: cops_dockercontainer_debug|default(false)
+  when: teleport_debug|default(false)
 - stat: {path: "{{item.value.ssh_key_path|default(teleport_ssh_key_path)}}"}
   register: sk
   loop: "{{teleport_items|dict2items}}"
@@ -38,7 +38,7 @@
     {% endif %}
     {% endfor %}
   args: {executable: /bin/bash}
-  no_log: "{{not cops_django_teleport_debug|default(False)}}"
+  no_log: "{{not teleport_debug|default(False)}}"
   tags: [teleport_xfer_ifexists, teleport_xfer_ifexists_test]
   register: teleport_ifexists
 - debug:

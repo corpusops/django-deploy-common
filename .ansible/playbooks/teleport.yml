@@ -14,7 +14,7 @@
           path: "{{teleport_paths.origin_dump}}"
       - shell: "{{teleport_origin_dump_script}}"
         name: "Make DB dump on source"
-        no_log: "{{not cops_django_teleport_secret_debug|default(False)}}"
+        no_log: "{{not teleport_debug|default(False)}}"
       tags: [backup, backup_db]
 - hosts: "{{teleport_destination}}"
   roles: [corpusops.roles/ansible_plugins]
