@@ -24,18 +24,20 @@ RUN bash -c 'set -ex \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
 FROM dependencies as pydependencies
-ADD --chown=django:django setup.* requirements* *.ini README* /code/
-# only bring minimal py for now as we get only deps (CI optims)
-ADD --chown=django:django src/*.py /code/src/
-ADD --chown=django:django private  /code/private/
 
 ARG PY_VER=3.6
 # See https://github.com/nodejs/docker-node/issues/380
+ARG PIP_SRC=/code/lib
+ENV PIP_SRC=$PIP_SRC
 ARG BUILD_DEV=
 ARG VSCODE_VERSION=
 ARG PYCHARM_VERSION=
+ENV VSCODE_VERSION=$VSCODE_VERSION
+ENV PYCHARM_VERSION=$PYCHARM_VERSION
 ARG WITH_VSCODE=0
+ENV WITH_VSCODE=$WITH_VSCODE
 ARG WITH_PYCHARM=0
+ENV WITH_PYCHARM=$WITH_PYCHARM
 ARG CFLAGS=
 ARG CPPLAGS=
 ARG C_INCLUDE_PATH=/usr/include/gdal/
@@ -51,36 +53,54 @@ ENV VSCODE_VERSION="$VSCODE_VERSION" \
     CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH" \
     LDFLAGS="$LDFLAGS" \
     WITH_PYCHARM="$WITH_PYCHARM" \
+    LC_ALL="$LANG" \
     LANG="$LANG"
+ARG FORCE_PIP="0"
+ARG FORCE_PIPENV="0"
 ARG MINIMUM_SETUPTOOLS_VERSION="50.3.2"
 ARG MINIMUM_PIP_VERSION="20.2.4"
 ARG MINIMUM_WHEEL_VERSION="0.35.1"
+ARG MINIMUM_PIPENV_VERSION="2020.11.15"
 ARG SETUPTOOLS_REQ="setuptools>=${MINIMUM_SETUPTOOLS_VERSION}"
 ARG PIP_REQ="pip==${MINIMUM_PIP_VERSION}"
+ARG PIPENV_REQ="pipenv>=${MINIMUM_PIP_VERSION}"
 ARG WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
 # Install now python deps without editable filter
-ADD --chown=django:django lib /code/lib/
+ADD --chown=flask:flask lib ${PIP_SRC}/
+# warning: requirements adds are done via the *txt glob
+ADD --chown=django:django setup.* *.ini *.rst *.md *.txt README* requirements* /code/
+# only bring minimal py for now as we get only deps (CI optims)
 ADD --chown=django:django src /code/src/
+ADD --chown=django:django private  /code/private/
+
 RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
-    && if [ ! -e requirements ];then mkdir requirements;cp -v requirements.txt requirements-dev.txt requirements;fi \
-    && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIP_REQ}\" \
-    && devreqs=requirements/requirements-dev.txt \
-    && reqs=requirements/requirements.txt \
-    && if [ -e setup.py ];then venv/bin/python -m pip install --no-deps -e .;fi \
-    && venv/bin/pip install -U --no-cache-dir -r \${reqs} \
-    && if [[ -n \"$BUILD_DEV\" ]];then \
-      venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs} \
-      && if [ "x$WITH_VSCODE" = "x1" ];then  venv/bin/python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
-      && if [ "x$WITH_PYCHARM" = "x1" ];then venv/bin/python -m pip install -U "pydevd-pycharm${PYCHARM_VERSION}";fi; \
+    && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIPENV_REQ}\" \"\${PIP_REQ}\" \
+    && devreqs=requirements-dev.txt \
+    && reqs=requirements.txt \
+    && . venv/bin/activate \
+    && if [ -e Pipfile ] || [ \"x${FORCE_PIPENV}\" = \"x1\" ];then \
+        pipenv_args=\"\" \
+        && if [[ -n \"$BUILD_DEV\" ]];then pipenv_args=\"--dev\";fi \
+        && venv/bin/pipenv install \${pipenv_args}; \
+    elif [ -e \${reqs} ] || [ \"x${FORCE_PIP}\" = \"x1\" ];then \
+       venv/bin/pip install -U --no-cache-dir -r \${reqs} \
+       && if [[ -n \"$BUILD_DEV\" ]] && [ -e \${devreqs} ];then \
+           venv/bin/pip install -U --no-cache-dir -r \${reqs} -r \${devreqs}; \
+       fi; \
     fi \
-    && for i in public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done" && date'
+    && if [ \"x$WITH_VSCODE\" = \"x1\" ];then  venv/bin/python -m pip install -U \"ptvsd${VSCODE_VERSION}\";fi \
+    && if [ \"x$WITH_PYCHARM\" = \"x1\" ];then venv/bin/python -m pip install -U \"pydevd-pycharm${PYCHARM_VERSION}\";fi \
+    && if [ -e setup.py ];then venv/bin/python -m pip install -e .;fi \
+    && date \
+    "'
 
 FROM pydependencies as appsetup
 # django basic setup
 RUN gosu django:django bash -exc ': \
+    && for i in data public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done \
     && . venv/bin/activate &>/dev/null \
     && cd src \
     && : django settings only for building steps \
