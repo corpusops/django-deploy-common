@@ -3,7 +3,10 @@ FROM $BASE as dependencies
 ENV PYTHONUNBUFFERED 1
 ENV DEBIAN_FRONTEND=noninteractive
 ARG TZ=Europe/Paris
+ARG APP_TYPE=django
 ARG PY_VER=3.6
+ENV APP_TYPE="$ÂPP_TYPE" \
+    PY_VER="$PY_VER"
 # See https://github.com/nodejs/docker-node/issues/380
 ARG GPG_KEYS=B42F6819007F00F88E364FD4036A9C25BF357DD4
 ARG GPG_KEYS_SERVERS="hkp://p80.pool.sks-keyservers.net:80 hkp://ipv4.pool.sks-keyservers.net hkp://pgp.mit.edu:80"
@@ -24,8 +27,6 @@ RUN bash -c 'set -ex \
     && if ! ( getent passwd django &>/dev/null );then useradd -ms /bin/bash django --uid 1000;fi && date'
 
 FROM dependencies as pydependencies
-
-ARG PY_VER=3.6
 # See https://github.com/nodejs/docker-node/issues/380
 ARG PIP_SRC=/code/pipsrc
 ENV PIP_SRC=$PIP_SRC
