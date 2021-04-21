@@ -114,7 +114,9 @@ RUN gosu django:django bash -exc ': \
 # Final cleanup, only work if using the docker build --squash option
 ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies'
 RUN \
-  set -ex && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
+  set -ex \
+  && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" /code/apt.txt \
+  && if $(egrep -q "${DEV_DEPENDENCIES_PATTERN}" /code/apt.txt);then \
     apt-get remove --auto-remove --purge \
       $(sed "1,/${DEV_DEPENDENCIES_PATTERN}/ d" /code/apt.txt|grep -v '^#'|tr "\n" " ");\
   fi \
