@@ -6,6 +6,13 @@ TOPDIR=$(pwd)
 
 # now be in stop-on-error mode
 set -e
+
+# export back the gateway ip as a host if ip is available in container
+if ( ip -4 route list match 0/0 &>/dev/null );then
+    ip -4 route list match 0/0 \
+        | awk '{print $3" host.docker.internal"}' >> /etc/hosts
+fi
+
 # load locales & default env
 # load this first as it resets $PATH
 for i in /etc/environment /etc/default/locale;do
@@ -51,6 +58,9 @@ NO_COLLECT_STATIC=${NO_COLLECT_STATIC-$DEFAULT_NO_COLLECT_STATIC}
 NO_IMAGE_SETUP="${NO_IMAGE_SETUP:-"1"}"
 FORCE_IMAGE_SETUP="${FORCE_IMAGE_SETUP:-"1"}"
 DO_IMAGE_SETUP_MODES="${DO_IMAGE_SETUP_MODES:-"fg|gunicorn"}"
+export PIP_SRC=${PIP_SRC:/code/pipsrc}
+NO_PIPENV_INSTALL=${NO_PIPENV_INSTALL-1}
+PIPENV_INSTALL_ARGS="${PIPENV_INSTALL_ARGS-"--ignore-pipfile"}"
 
 FINDPERMS_PERMS_DIRS_CANDIDATES="${FINDPERMS_PERMS_DIRS_CANDIDATES:-"public private"}"
 FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"public private data"}"
@@ -61,11 +71,6 @@ export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
 export USER_DIRS="${USER_DIRS:-". public/media data /logs/cron ${EXTRA_USER_DIRS}"}"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
-# export back the gateway ip as a host if ip is available in container
-if ( ip -4 route list match 0/0 &>/dev/null );then
-    ip -4 route list match 0/0 \
-        | awk '{print $3" host.docker.internal"}' >> /etc/hosts
-fi
 
 # django variables
 export GUNICORN_CLASS=${GUNICORN_CLASS:-sync}
@@ -297,6 +302,11 @@ pre() {
     fi
     fixperms
 }
+
+# reinstall in develop any missing editable dep
+if [ -e Pipfile ] && ( egrep -q  "editable\s*=\s*true" Pipfile ) && [[ -z "$(ls -1 ${PIP_SRC}/ | grep -vi readme)" ]] && [[ "$NO_PIPENV_INSTALL" != "1" ]];then
+    pipenv install $PIPENV_INSTALL_ARGS 1>&2
+fi
 
 # only display startup logs when we start in daemon mode
 # and try to hide most when starting an (eventually interactive) shell.
