@@ -2,7 +2,7 @@
 [program:celery_beat]
 # use gosu to have all django groups
 command = gosu django sh -c 'set -ex \
-  && celery beat -A {{ .Env.DJANGO_CELERY }} -l {{ .Env.CELERY_LOGLEVEL }}'
+  && celery -A {{ .Env.DJANGO_CELERY }} beat -l {{ .Env.CELERY_LOGLEVEL }}'
 autostart = true
 autorestart = true
 killasgroup = true
