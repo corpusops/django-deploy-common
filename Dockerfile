@@ -67,7 +67,7 @@ ARG PIP_REQ="pip==${MINIMUM_PIP_VERSION}"
 ARG PIPENV_REQ="pipenv>=${MINIMUM_PIP_VERSION}"
 ARG WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
 # Install now python deps without editable filter
-ADD --chown=flask:flask lib ${PIP_SRC}/
+ADD --chown=django:django lib lib/
 # warning: requirements adds are done via the *txt glob
 ADD --chown=django:django setup.* *.ini *.rst *.md *.txt README* requirements* /code/
 # only bring minimal py for now as we get only deps (CI optims)
@@ -78,9 +78,12 @@ RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
     && gosu django:django bash -exc "python${PY_VER} -m venv venv \
+    && if [ ! -e requirements ];then mkdir requirements;fi \
+    && devreqs=requirements-dev.txt && reqs=requirements.txt \
+    && : handle retrocompat with both old and new layouts /requirements.txt and /requirements/requirements.txt \
+    && find -maxdepth 1 -iname \"requirement*txt\" -or -name \"Pip*\" | sed -re \"s|./||\" \
+    | while read r;do mv -vf \${r} requirements && ln -fsv requirements/\${r};done \
     && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIPENV_REQ}\" \"\${PIP_REQ}\" \
-    && devreqs=requirements-dev.txt \
-    && reqs=requirements.txt \
     && . venv/bin/activate \
     && if [ -e Pipfile ] || [ \"x${FORCE_PIPENV}\" = \"x1\" ];then \
         pipenv_args=\"\" \
