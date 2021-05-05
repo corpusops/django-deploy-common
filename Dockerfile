@@ -84,7 +84,7 @@ RUN bash -exc ': \
     && find -maxdepth 1 -iname \"requirement*txt\" -or -name \"Pip*\" | sed -re \"s|./||\" \
     | while read r;do mv -vf \${r} requirements && ln -fsv requirements/\${r};done \
     && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIPENV_REQ}\" \"\${PIP_REQ}\" \
-    && . venv/bin/activate \
+    && set +x && . venv/bin/activate && set -x\
     && if [ -e Pipfile ] || [ \"x${FORCE_PIPENV}\" = \"x1\" ];then \
         pipenv_args=\"\" \
         && if [[ -n \"$BUILD_DEV\" ]];then pipenv_args=\"--dev\";fi \
