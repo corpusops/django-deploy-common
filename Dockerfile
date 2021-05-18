@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG TZ=Europe/Paris
 ARG APP_TYPE=django
 ARG PY_VER=3.6
-ENV APP_TYPE="$ÂPP_TYPE" \
+ENV APP_TYPE="$APP_TYPE" \
     PY_VER="$PY_VER"
 # See https://github.com/nodejs/docker-node/issues/380
 ARG GPG_KEYS=B42F6819007F00F88E364FD4036A9C25BF357DD4
