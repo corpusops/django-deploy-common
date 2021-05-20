@@ -77,7 +77,7 @@ ADD --chown=django:django private  /code/private/
 RUN bash -exc ': \
     && date && find /code -not -user django \
     | while read f;do chown django:django "$f";done \
-    && gosu django:django bash -exc "python${PY_VER} -m venv venv \
+    && gosu django:django bash -exc "if [ ! -e venv ];then python${PY_VER} -m venv venv;fi \
     && if [ ! -e requirements ];then mkdir requirements;fi \
     && devreqs=requirements-dev.txt && reqs=requirements.txt \
     && : handle retrocompat with both old and new layouts /requirements.txt and /requirements/requirements.txt \
