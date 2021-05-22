@@ -332,5 +332,11 @@ if [[ -z "$@" ]]; then
     fi
 else
     if [[ "${1-}" = "shell" ]];then shift;fi
-    ( cd $PROJECT_DIR && _shell $SHELL_USER "$@" )
+    # retrocompat with old images
+    cmd="$@"
+    if ( echo "$cmd" |egrep -q "tox.*/bin/sh -c tests" );then
+        cmd="$( echo "${cmd}"|sed -r \
+            -e "s/-c tests/-exc '.\/manage.py test/" -e "s/$/'/g" )"
+    fi
+    ( cd $PROJECT_DIR && _shell $SHELL_USER "$cmd" )
 fi
