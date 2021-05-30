@@ -110,15 +110,6 @@ cops_django_docker_env_defaults: |-
   DJANGO__CORS_ORIGIN_WHITELIST={{cops_django_hosts_whitelist}}
   DJANGO__CORS_ORIGIN_ALLOW_ALL={{cops_django_cors_origin_allow_all}}
   DJANGO__COPS_ALL_HOSTNAMES={{cops_django_hostnames}}
-  DJANGO__ALLOWED_HOSTS={{cops_django_hosts_whitelist}}
-  DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
-  DJANGO__HTTP_PROTECT_USER={{cops_django_http_protect_user}}
-  DJANGO__HTTP_PROTECT_PASSWORD={{cops_django_http_protect_password}}
-  {% if cops_django_sentry_dsn %}
-  DJANGO__SENTRY_DSN={{cops_django_sentry_dsn}}
-  DJANGO__SENTRY_RELEASE={{cops_django_docker_tag}}
-  DJANGO__SENTRY_TAGS={{cops_django_sentry_tags|join(',')}}
-  {% endif %}
   {% if cops_django_devmode %}
   DJANGO__DEBUG=y
   {% endif %}
@@ -136,6 +127,15 @@ cops_django_docker_env_defaults: |-
   DJANGO__REDIS_URL={{cops_django_redis_url}}
 # free form for params inside dockerenv
 cops_django_dotenv: |-
+  DJANGO__ALLOWED_HOSTS={{cops_django_hosts_whitelist}}
+  DJANGO__DEPLOY_ENV={{cops_django_deploy_env}}
+  DJANGO__HTTP_PROTECT_USER={{cops_django_http_protect_user}}
+  DJANGO__HTTP_PROTECT_PASSWORD={{cops_django_http_protect_password}}
+  {% if cops_django_sentry_dsn %}
+  DJANGO__SENTRY_DSN={{cops_django_sentry_dsn}}
+  DJANGO__SENTRY_RELEASE={{cops_django_docker_tag}}
+  DJANGO__SENTRY_TAGS={{cops_django_sentry_tags|join(',')}}
+  {% endif %}
   # gunicorn
   GUNICORN_CLASS={{cops_django_gunicorn_class}}
   GUNICORN_EXTRA_ARGS={{cops_django_gunicorn_extra_args}}
