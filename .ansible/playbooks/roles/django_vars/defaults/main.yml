@@ -31,7 +31,7 @@ cops_django_servicename: "{{cops_django_composename}}"
 cops_django_http_port: 80
 cops_django_https_port: 443
 cops_django_api_port: 8000
-cops_django_api_listen: 0.0.0.0
+cops_django_api_listen: 127.0.0.1
 cops_django_http_listen: 0.0.0.0
 #
 cops_django_db_host: "db"
