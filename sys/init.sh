@@ -107,7 +107,9 @@ regen_egg_info() {
     if [ -e "$f" ];then
         local e="$(dirname "$f")"
         echo "Reinstalling egg-info in: $e" >&2
-        ( cd "$e" && gosu $APP_USER python setup.py egg_info 2>&1; )
+        if ! ( cd "$e" && gosu $APP_USER python setup.py egg_info >/dev/null 2>&1; );then
+            ( cd "$e" && gosu $APP_USER python setup.py egg_info 2>&1; )
+        fi
     fi
 }
 
