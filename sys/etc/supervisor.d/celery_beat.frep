@@ -1,8 +1,8 @@
 
-[program:celery_worker]
+[program:celery_beat]
 # use gosu to have all django groups
 command = gosu django sh -c 'set -ex \
-  && celery -A {{ .Env.DJANGO_CELERY }} worker -l {{ .Env.CELERY_LOGLEVEL}}'
+  && celery -A {{ .Env.DJANGO_CELERY }} beat -l {{ .Env.CELERY_LOGLEVEL }}'
 autostart = true
 autorestart = true
 killasgroup = true
