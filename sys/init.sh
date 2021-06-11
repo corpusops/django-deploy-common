@@ -92,6 +92,8 @@ export DJANGO_WSGI=${DJANGO_WSGI:-project.wsgi}
 export DJANGO_LISTEN=${DJANGO_LISTEN:-"0.0.0.0:8000"}
 
 # Celery variables
+# export CELERY_SCHEDULER=${CELERY_SCHEDULER:-celery.beat.PersistentScheduler}
+export CELERY_SCHEDULER=${CELERY_SCHEDULER:-django_celery_beat.schedulers:DatabaseScheduler}
 export CELERY_LOGLEVEL=${CELERY_LOGLEVEL:-info}
 export DJANGO_CELERY=${DJANGO_CELERY:-project.celery:app}
 export DJANGO_CELERY_BROKER="${DJANGO_CELERY_BROKER:-amqp}"
