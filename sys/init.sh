@@ -330,6 +330,7 @@ if [[ $IMAGE_MODE = "pycharm" ]];then
     for i in ${PYCHARM_DIRS};do if [ -e "$i" ];then chown -Rf $APP_USER "$i";fi;done
     subshell="set -e"
     subshell="$subshell;if [ -e \$VENV ];then . \$VENV/bin/activate;fi"
+    subshell="$subshell;cd $ODIR"
     subshell="$subshell;export PYTHONPATH=\"$OPYPATH:\${PYTHONPATH-}·\""
     subshell="$subshell;python $cmdargs"
     exec gosu $APP_USER bash -lc "$subshell"
