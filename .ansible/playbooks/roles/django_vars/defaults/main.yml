@@ -223,6 +223,11 @@ cops_django_sync_theme_contents_webpack: |-
   {% set _ = res.update(cops_django_sync_theme_contents_front) %}
   {{ res | to_json }}
 cops_django_sync_theme_contents: {}
+cops_django_drun_extra_args: "--entrypoint /init.sh"
+cops_django_drun:
+  COMPOSE_INTERACTIVE_NO_CLI= {{teleport_dc}}
+  run -e SHELL_USER=django --no-deps
+  --rm {{cops_django_drun_extra_args}} {{teleport_app_container}}
 #
 # teleport vars (duplicate environment to another)
 #
@@ -385,13 +390,11 @@ teleport_destination_sshargs_default: >-
   {% if user %}-l {{user}}{% endif %}
   {% endif %}
 teleport_django_fakeinitial: true
-teleport_post_reset_drun_extra_args: "--entrypoint /init.sh"
 teleport_post_reset_script_default: |-
   set -ex
   {% if teleport_django_fakeinitial %}
   cd {{teleport_wd}};
-  cat|COMPOSE_INTERACTIVE_NO_CLI= {{teleport_dc}} \
-  run -e SHELL_USER=django --no-deps --rm {{teleport_post_reset_drun_extra_args}} {{teleport_app_container}} bash -ex - <<EOF
+  cat|{{cops_django_drun}} bash -ex - <<EOF
   . /code/venv/bin/activate && \
   python ./manage.py migrate --fake-initial
   EOF
