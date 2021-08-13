@@ -105,6 +105,8 @@ cops_django_gunicorn_class: "sync"
 cops_django_gunicorn_extra_args: ""
 cops_django_generic_db_mode: postgres
 cops_django_db_mode: "{{cops_django_generic_db_mode}}"
+# one of ftp|ssh
+cops_django_ftp_mode: ftp
 cops_django_docker_env_defaults: ""
 # free form for params inside dockerenv
 cops_django_dotenv_defaults: |-
