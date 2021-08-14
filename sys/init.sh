@@ -308,6 +308,7 @@ fi
 execute_hooks() {
     local step="$1"
     local hdir="$INIT_HOOKS_DIR/${step}"
+    if [ ! -d "$hdir" ];then return 0;fi
     shift
     while read f;do
         if ( echo "$f" | egrep -q "\.sh$" );then
