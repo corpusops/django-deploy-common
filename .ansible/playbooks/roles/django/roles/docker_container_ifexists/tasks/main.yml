@@ -54,4 +54,3 @@
       {% endfor %}
       {{ ret | to_json }}
   register: teleportsynctest
-  when: cops_dockercontainer_debug|default(false)
