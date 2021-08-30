@@ -120,6 +120,7 @@ RUN \
 
 ADD --chown=django:django sys                          /code/sys
 ADD --chown=django:django local/django-deploy-common/  /code/local/django-deploy-common/
+ADD --chown=django:django doc*                         /code/docs/
 
 # if we found a static dist inside the sys directory, it has been injected during
 # the CI process, we just unpack it
