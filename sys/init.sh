@@ -318,7 +318,7 @@ execute_hooks() {
             debuglog "running executable hook($step): $f"
             "$f" "$@"
         fi
-    done < <(find "$hdir" -type f -executable 2>/dev/null | sort -V; )
+    done < <(find "$hdir" -type f -executable 2>/dev/null | egrep -iv readme | sort -V; )
 }
 
 # Run app
