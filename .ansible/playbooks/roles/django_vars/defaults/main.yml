@@ -106,19 +106,6 @@ cops_django_gunicorn_extra_args: ""
 cops_django_generic_db_mode: postgres
 cops_django_db_mode: "{{cops_django_generic_db_mode}}"
 cops_django_docker_env_defaults: |-
-  # This need to be changed in production
-  SECRET_KEY={{ cops_django_secret_key }}
-  # gunicorn
-  GUNICORN_CLASS={{cops_django_gunicorn_class}}
-  GUNICORN_EXTRA_ARGS={{cops_django_gunicorn_extra_args}}
-  # db
-  POSTGRES_HOST={{ cops_django_db_host }}
-  POSTGRES_PORT={{ cops_django_db_port }}
-  POSTGRES_USER={{ cops_django_db_user }}
-  POSTGRES_DB={{ cops_django_db_name }}
-  POSTGRES_PASSWORD={{cops_django_db_password }}
-  PGPASSWD={{cops_django_db_password }}
-  PGPASSWORD={{cops_django_db_password }}
   # cors
   DJANGO__CORS_ORIGIN_WHITELIST={{cops_django_hosts_whitelist}}
   DJANGO__CORS_ORIGIN_ALLOW_ALL={{cops_django_cors_origin_allow_all}}
@@ -146,12 +133,25 @@ cops_django_docker_env_defaults: |-
   {% if cops_django_email_host_password %}
   DJANGO__EMAIL_HOST_PASSWORD={{cops_django_email_host_password}}
   {% endif %}
-  MAILCATCHER_USER={{cops_django_mailcatcher_user}}
-  MAILCATCHER_PASSWORD={{cops_django_mailcatcher_password}}
   DJANGO__REDIS_URL={{cops_django_redis_url}}
-  REDIS_URL={{cops_django_redis_url}}
 # free form for params inside dockerenv
 cops_django_dotenv: |-
+  # gunicorn
+  GUNICORN_CLASS={{cops_django_gunicorn_class}}
+  GUNICORN_EXTRA_ARGS={{cops_django_gunicorn_extra_args}}
+  # This need to be changed in production
+  SECRET_KEY={{ cops_django_secret_key }}
+  MAILCATCHER_USER={{cops_django_mailcatcher_user}}
+  MAILCATCHER_PASSWORD={{cops_django_mailcatcher_password}}
+  REDIS_URL={{cops_django_redis_url}}
+  # db
+  POSTGRES_HOST={{ cops_django_db_host }}
+  POSTGRES_PORT={{ cops_django_db_port }}
+  POSTGRES_USER={{ cops_django_db_user }}
+  POSTGRES_DB={{ cops_django_db_name }}
+  POSTGRES_PASSWORD={{cops_django_db_password }}
+  PGPASSWD={{cops_django_db_password }}
+  PGPASSWORD={{cops_django_db_password }}
   DJANGO__HTTP_LISTEN={{cops_django_http_listen}}
   DJANGO__API_LISTEN={{cops_django_api_listen}}
   DJANGO__HTTP_PORT={{cops_django_http_port}}
