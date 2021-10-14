@@ -3,6 +3,7 @@ RUN apt-get update -qq
 ADD docs/apt.txt ./
 RUN apt-get install -qq $(cat apt.txt)
 ADD docs/req*.txt ./
+ADD requirements* ./apprequirements/
 RUN pip install -r requirements.txt
 ADD docs /code/docs
 ADD local /code/local/
