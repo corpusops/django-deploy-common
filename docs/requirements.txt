@@ -1,3 +1,4 @@
 pygments
 sphinx-rtd-theme
 sphinx
+-r apprequirements/requirements.txt
