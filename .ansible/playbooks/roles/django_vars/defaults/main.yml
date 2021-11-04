@@ -5,13 +5,18 @@ cops_django_settings_module: "{{cops_django_project_module_name}}.settings.insta
 cops_django_project_dir: "./src/{{cops_django_project_module_name.replace('.', '/')}}"
 cops_django_front_dir: "{{cops_django_project_dir}}"
 cops_django_py_ver: "3.7"
-cops_django_deploy_env: "dev"
-cops_django_docker_image_tag: "{{cops_django_name}}"
+cops_django_default_deploy_env: "dev"
 cops_django_default_docker_tag: "latest"
-cops_django_docker_tag: "{{cops_django_default_docker_tag}}"
+cops_django_default_gitref: "master"
+cops_django_branch_envs: {}
+cops_django_deploy_env: "{{ (
+  cops_django_gitref in [cops_django_default_gitref, cops_django_default_docker_tag]
+    and cops_django_default_deploy_env
+    or  cops_django_branch_envs.get(cops_django_gitref, cops_django_gitref))}}"
+cops_django_docker_tag: "{{cops_django_gitref.replace('master', cops_django_default_docker_tag)}}"
+cops_django_docker_image_tag: "{{cops_django_name}}"
 cops_django_tld_domain: example.com
 cops_django_mail_domain: "{{ cops_django_tld_domain }}"
-cops_django_default_gitref: "master"
 cops_django_gitref: "{{cops_django_default_gitref}}"
 cops_django_dir: "/srv/docker/{{cops_django_name}}"
 cops_django_hostname: "{{cops_django_deploy_env}}-{{cops_django_name}}.{{cops_django_tld_domain}}"
