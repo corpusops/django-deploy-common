@@ -80,7 +80,7 @@ export APP_USER="${APP_USER:-$APP_TYPE}"
 export INIT_HOOKS_DIR="${INIT_HOOKS_DIR:-/code/sys/scripts/hooks}"
 export APP_GROUP="$APP_USER"
 export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
-export USER_DIRS="${USER_DIRS:-". public/media data /logs/cron ${EXTRA_USER_DIRS}"}"
+export USER_DIRS="${USER_DIRS:-". src public/media data /logs/cron ${EXTRA_USER_DIRS}"}"
 SHELL_USER=${SHELL_USER:-${APP_USER}}
 
 
