@@ -170,6 +170,7 @@ cops_django_dotenv_defaults: |-
   DJANGO_IMAGE={{ cops_django_docker_image }}
   DJANGO_IMAGE_VERSION={{cops_django_docker_tag}}
   CONTROL_COMPOSE_FILES={{cops_django_compose_files|join(' ')}}
+  COMPOSE_FILE={{cops_django_compose_files|join(':')}}
   DJANGO__DOC_PROTECT_USER={{cops_django_doc_protect_user}}
   DJANGO__DOC_PROTECT_PASSWORD={{cops_django_doc_protect_password}}
 
