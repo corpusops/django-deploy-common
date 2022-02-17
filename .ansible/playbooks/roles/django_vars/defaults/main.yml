@@ -23,7 +23,8 @@ cops_django_hostname: "{{cops_django_deploy_env}}-{{cops_django_name}}.{{cops_dj
 cops_django_alternate_hostnames: [".{{cops_django_tld_domain}}"]
 cops_django_secret_key: "SuperSecret"
 cops_django_gateway: "{{ ansible_default_ipv4.address}}"
-cops_django_composename: "{{(ansible_connection|default('ssh') in ['local'] and
+cops_django_devmode: "{{ansible_connection|default('ssh') in ['local']}}"
+cops_django_composename: "{{forced_cops_django_composename|default(cops_django_devmode and
   (teleport_wd|copsf_basename) or
   cops_django_name)}}"
 cops_django_servicename: "{{cops_django_composename}}"
@@ -39,7 +40,6 @@ cops_django_db_port: "5432"
 cops_django_db_user: "secretJFCxwPHz99R9jIi"
 cops_django_db_password: "secret4gzQNe3c8851VOJ"
 cops_django_db_name: "{{cops_django_name}}"
-cops_django_devmode: False
 cops_django_build_args: "--no-cache django cron"
 # backup could be remove in a-while when we have redeployed it everywhere
 cops_django_restarted_services_default: "db redis django nginx backup cron"
@@ -47,8 +47,6 @@ cops_django_restarted_services: "{{cops_django_restarted_services_default}}"
 cops_django_purge_volumes: [statics]
 cops_django_medias_owner: "1000"
 cops_django_medias_group: "1000"
-cops_django_force_sync_ssh_user: null
-cops_django_sync_ssh_user: ""
 cops_django_sshargs: >-
   {% set k = hostvars[inventory_hostname].get(
                 'ansible_ssh_private_key_file', '') %}
@@ -73,8 +71,7 @@ cops_django_registries: []
 #- {registry: registry.foo.net, username: foo, password: bar}
 cops_django_compose_files_prod: [docker-compose.yml, docker-compose-prod.yml]
 cops_django_compose_files_dev: [docker-compose.yml, docker-compose-dev.yml]
-cops_django_compose_files: "{{(ansible_connection|default('ssh') in ['local'] and
-  cops_django_compose_files_dev or cops_django_compose_files_prod)}}"
+cops_django_compose_files: "{{(cops_django_devmode and cops_django_compose_files_dev or cops_django_compose_files_prod)}}"
 cops_django_dc:
   docker-compose {% for i in cops_django_compose_files %} -f {{i}}{% endfor %}
   -p "{{cops_django_composename}}"
@@ -192,6 +189,7 @@ cops_django_code_rsync_opts: [
     "--exclude", "local/*",
     "--exclude", ".tox",
     "--exclude", ".env",
+    "--exclude", ".vscode",
     "--exclude", "docker.env"]
 cops_django_backup_postgresql: "{{'5432' == '{0}'.format(cops_django_db_port)}}"
 cops_django_backup_paths_to_backup:
@@ -258,7 +256,7 @@ teleport_restart_services: "{{teleport_services}}"
 # teleport_destination: <destination to restore>
 teleport_force_wd: "{{cops_django_dir}}"
 teleport_wd: "{{(
-  ansible_connection|default('ssh') in ['local'] and
+  cops_django_devmode and
   (playbook_dir|copsf_dirname|copsf_dirname) or
   teleport_force_wd)}}"
 teleport_orig_wd: "{{teleport_force_orig_wd|default(teleport_force_wd)}}"
@@ -289,7 +287,9 @@ teleport_paths: "{{teleport_paths_common|combine(lookup('vars', 'teleport_paths_
 teleport_paths_origin_dump_file: "{{teleport_paths.origin_dump}}/{{teleport_paths.dump_file}}"
 teleport_paths_dest_dump_file: "{{teleport_paths.dest_dump}}/{{teleport_paths.dump_file}}"
 teleport_rsync_args: "-az{{teleport_verbose}} --delete --delete-after"
-teleport_rsync_extra_args: ""
+teleport_rsync_extra_args: "{{teleport_rsync_origin_extra_args}}"
+teleport_rsync_origin_extra_args: "{% if teleport_origin_vars.get('ansible_become', '')           and (teleport_origin_vars.get('ansible_user', '')      not in [None, '', 'root'])%}--rsync-path='sudo rsync'{%endif%}"
+teleport_rsync_destination_extra_args: "{% if teleport_destination_vars.get('ansible_become', '') and (teleport_destination_vars.get('ansible_user', '') not in [None, '', 'root'])%}--rsync-path='sudo rsync'{%endif%}"
 teleport_destination_ansible_host: "{{groups[teleport_destination][0]}}"
 teleport_origin_ansible_host: "{{groups[teleport_origin][0]}}"
 teleport_destination_host: "{{hostvars[teleport_destination_ansible_host]['ansible_host'] or teleport_destination_ansible_host}}"
@@ -324,9 +324,16 @@ teleport_sshkey_stripper: "-i [^ ]+"
 teleport_origin_sshargs_withoutkey: "{{teleport_origin_sshargs_default|regex_replace( teleport_sshkey_stripper, '')}}"
 teleport_destination_sshargs_withoutkey: "{{teleport_destination_sshargs_default|regex_replace( teleport_sshkey_stripper, '')}}"
 # as we connect not from bastion, dont use by default the key version one
-teleport_origin_sshargs: "{{teleport_origin_sshargs_withoutkey}}"
+ansible_ssh_bastion: ""
 teleport_sshargs: "{{teleport_origin_sshargs}}"
-teleport_destination_sshargs:  "{{teleport_destination_sshargs_withoutkey}}"
+teleport_origin_vars: "{{hostvars[groups[teleport_origin][0]]}}"
+teleport_destination_vars: "{{hostvars[groups[teleport_destination][0]]}}"
+teleport_origin_sshargs: "{% if teleport_origin_vars.get('ansible_user', '')%}-l {{teleport_origin_vars.ansible_user}}{%endif%}{{ ((teleport_origin_vars.get(
+  'ansible_ssh_bastion', '') |copsf_asbool
+) and teleport_origin_sshargs_default or teleport_origin_sshargs_withoutkey).replace('\"', \"'\")}}"
+teleport_destination_sshargs: "{% if teleport_destination_vars.get('ansible_user', '')%}-l {{teleport_destination_vars.ansible_user}}{%endif%}{{ ((teleport_destination_vars.get(
+  'ansible_ssh_bastion', '') |copsf_asbool
+) and teleport_destination_sshargs_default or teleport_destination_sshargs_withoutkey).replace('\"', \"'\")}}"
 teleport_origin_dump_scripts_postgres: |-
   {% if not teleport_origin_db_is_docker %}
   cd "{{teleport_paths.origin_dump}}"
@@ -362,9 +369,21 @@ teleport_origin_db_is_docker: "{{_teleport_mode in ['default', 'standard']}}"
 teleport_origin_db_dockername: "{{cops_django_name}}_db_1"
 teleport_db_encoding: 'UTF-8'
 teleport_pg_restore_drop_db: true
+cops_django_force_sync_ssh_user: null
+cops_django_sync_ssh_user: ""
+ansible_bastion: ""
+cops_django_sync_ssh_user_internal: "{% if((cops_django_force_sync_ssh_user) or
+        (cops_django_sync_ssh_user and (cops_django_force_sync_ssh_user == True))
+    )%}{{ cops_django_sync_ssh_user or ansible_user or '' }}{% endif %}"
+teleport_env_ssh_deploy_key: "/srv/docker/{{cops_django_name}}/local/.ssh/deploy"
+teleport_bastion_ssh_deploy_key: "{{teleport_env_ssh_deploy_key}}"
+teleport_origin_viabastion_sshargs: "{% set d = hostvars[groups[teleport_origin][0]] %}{%if ansible_bastion%}-o ProxyCommand=\"ssh {% if teleport_bastion_ssh_deploy_key %}-i {{teleport_bastion_ssh_deploy_key}} {%endif%}-o IdentitiesOnly=yes -q -W {{d.ansible_host}}:{{d.ansible_port|default('22')}} {{ansible_bastion}} {%if ansible_bastion_user%}-l {{ansible_bastion_user}}{%endif%} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" {%endif%}"
+teleport_destination_viabastion_sshargs: "{% set d = hostvars[groups[teleport_destination][0]] %}{%if ansible_bastion%}-o ProxyCommand=\"ssh {% if teleport_bastion_ssh_deploy_key %}-i {{teleport_bastion_ssh_deploy_key}} {%endif%}-o IdentitiesOnly=yes -q -W {{d.ansible_host}}:{{d.ansible_port|default('22')}} {{ansible_bastion}} {%if ansible_bastion_user%}-l {{ansible_bastion_user}}{%endif%} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\" {%endif%}"
+teleport_ssh_origin_args: "{{hostvars[groups[teleport_origin][0]].ansible_ssh_common_args | default('')}}"
+teleport_ssh_destination_args: "{{hostvars[groups[teleport_destination][0]].ansible_ssh_common_args | default('')}}"
 teleport_origin_sshargs_default: >-
   {% set h = groups[teleport_origin][0] %}
-  {% set k = teleport_ssh_origin_key_path%}
+  {% set k = teleport_destination not in ['controller'] and teleport_env_ssh_deploy_key or teleport_ssh_origin_key_path %}
   {% if k%}-o IdentityFile={{k}} -o IdentitiesOnly=yes{%endif%}
   -o StrictHostKeyChecking=no
   {% if (
@@ -372,18 +391,14 @@ teleport_origin_sshargs_default: >-
      ) not in [ 'smart', 'local'] %}
   {{ hostvars[h].ssh_args | default('') }}
   {{ hostvars[h].ansible_ssh_args | default('') }}
-  {{ hostvars[h].ansible_ssh_common_args | default('') }}
+  {{ ansible_bastion and teleport_origin_viabastion_sshargs or teleport_ssh_origin_args }}
   {{ hostvars[h].ansible_ssh_extra_args | default('') }}
   {% endif %}
-  {% if((cops_django_force_sync_ssh_user) or
-        (cops_django_sync_ssh_user and (cops_django_force_sync_ssh_user == True))
-    )%}
-  {% set user = cops_django_sync_ssh_user or ansible_user or '' %}
-  {% if user %}-l {{user}}{% endif %}
-  {% endif %}
+  {% set user = cops_django_sync_origin_ssh_user|default(cops_django_sync_ssh_user) or ansible_user or '' %}
+  {% if cops_django_sync_ssh_user_internal %}-l {{user}}{% endif %}
 teleport_destination_sshargs_default: >-
   {% set h = groups[teleport_destination][0] %}
-  {% set k = teleport_ssh_destination_key_path%}
+  {% set k = teleport_origin not in ['controller'] and teleport_env_ssh_deploy_key or teleport_ssh_destination_key_path %}
   -o StrictHostKeyChecking=no
   {% if k%}-o IdentityFile={{k}} -o IdentitiesOnly=yes{%endif%}
   {% if (
@@ -391,13 +406,13 @@ teleport_destination_sshargs_default: >-
      ) not in [ 'smart', 'local'] %}
   {{ hostvars[h].ssh_args | default('') }}
   {{ hostvars[h].ansible_ssh_args | default('') }}
-  {{ hostvars[h].ansible_ssh_common_args | default('') }}
+  {{ ansible_bastion and teleport_destination_viabastion_sshargs or teleport_ssh_destination_args }}
   {{ hostvars[h].ansible_ssh_extra_args | default('') }}
   {% endif %}
   {% if((cops_django_force_sync_ssh_user) or
         (cops_django_sync_ssh_user and (cops_django_force_sync_ssh_user == True))
     )%}
-  {% set user = cops_django_sync_ssh_user or ansible_user or '' %}
+  {% set user = cops_django_sync_dest_ssh_user|default(cops_django_sync_ssh_user) or ansible_user or '' %}
   {% if user %}-l {{user}}{% endif %}
   {% endif %}
 teleport_django_fakeinitial: true
