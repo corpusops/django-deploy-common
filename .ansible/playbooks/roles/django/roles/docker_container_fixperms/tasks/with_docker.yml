@@ -4,7 +4,8 @@
     {% set p = item.value.container_path %}
     {% set o = item.value.owner|default(cops_django_medias_owner) %}
     {% set g = item.value.group|default(cops_django_medias_group) %}
-    set -ex
+    {% set d = teleport_debug|default(false) %}
+    set -e{% if d%}x{%endif%}
     cd "{{teleport_wd}}"
     cat|COMPOSE_INTERACTIVE_NO_CLI= \
     {{teleport_dc}} run --no-deps --rm -u root \
