@@ -254,11 +254,12 @@ teleport_restart_services: "{{teleport_services}}"
 # teleport_mode: default|makinastates
 # teleport_origin: <origin from where we restore>
 # teleport_destination: <destination to restore>
+teleport_force_wd: "{{cops_django_dir}}"
 teleport_wd: "{{(
   ansible_connection|default('ssh') in ['local'] and
   (playbook_dir|copsf_dirname|copsf_dirname) or
-  cops_django_dir)}}"
-teleport_orig_wd: "{{cops_django_dir}}"
+  teleport_force_wd)}}"
+teleport_orig_wd: "{{teleport_force_orig_wd|default(teleport_force_wd)}}"
 teleport_orig_composename: "{{cops_django_name}}"
 teleport_data_dir: "{{teleport_wd}}/local/nobackup/teleport"
 teleport_orig_data_dir: "{{teleport_orig_wd}}/local/nobackup/teleport"
