@@ -64,6 +64,7 @@ RUN bash -exc ': \
     \
     && : "install packages" \
     && apt-get update  -qq \
+    && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" apt.txt \
     && apt-get install -qq -y $(sed -re "/$DEV_DEPENDENCIES_PATTERN/,$ d" apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
     && apt-get clean all && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
   '
