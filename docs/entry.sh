@@ -2,7 +2,7 @@
 if [[ -n ${DEBUG} ]];then set -x;fi
 set -e
 SOURCEDIR=${SOURCEDIR:-"/code/docs.host"}
-BUILDDIR=${BUILDDIR:-"/code/app.host/var/private/docs"}
+BUILDDIR=${BUILDDIR:-"$SOURCEDIR/_build"}
 NO_INIT=${NO_INIT-}
 NO_CLEAN=${NO_CLEAN-}
 NO_HTML=${NO_HTML-}
@@ -14,6 +14,7 @@ init() {
     fi
 }
 [[ -z ${NO_INIT} ]] && init
+cd $SOURCEDIR
 if [[ -n "$@" ]];then
     exec $@
 else
