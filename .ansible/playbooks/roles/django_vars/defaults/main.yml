@@ -196,7 +196,9 @@ cops_django_code_rsync_opts: [
 cops_django_backup_postgresql: "{{'5432' == '{0}'.format(cops_django_db_port)}}"
 cops_django_backup_paths_to_backup:
 - "{{cops_django_dir}}"
-cops_django_backup_docker_volumes: [mediafiles]
+cops_django_backup_docker_volumes_include_media: [mediafiles]
+cops_django_backup_docker_volumes_none: []
+cops_django_backup_docker_volumes: "{{cops_django_backup_docker_volumes_none}}"
 cops_django_backup_docker_volumes_: |-
   {% set res = [] %}
   {% for i in cops_django_backup_docker_volumes %}
