@@ -288,7 +288,7 @@ teleport_paths_common:
 teleport_paths: "{{teleport_paths_common|combine(lookup('vars', 'teleport_paths_'+_teleport_mode))}}"
 teleport_paths_origin_dump_file: "{{teleport_paths.origin_dump}}/{{teleport_paths.dump_file}}"
 teleport_paths_dest_dump_file: "{{teleport_paths.dest_dump}}/{{teleport_paths.dump_file}}"
-teleport_rsync_args: "-azv --delete --delete-after"
+teleport_rsync_args: "-az{{teleport_verbose}} --delete --delete-after"
 teleport_rsync_extra_args: ""
 teleport_destination_ansible_host: "{{groups[teleport_destination][0]}}"
 teleport_origin_ansible_host: "{{groups[teleport_origin][0]}}"
@@ -470,3 +470,9 @@ teleport_deploy_ssh_key_paths: |-
   {%- endfor %}
   {{- ret | to_json }}
 teleport_dryrun: false
+teleport_debug: false
+teleport_is_verbose: "{{teleport_debug}}"
+teleport_verbose: "{{teleport_is_verbose and 'v' or ''}}"
+teleport_vverbose: "{{teleport_is_verbose  and '-v' or ''}}"
+teleport_xverbose: "{{teleport_is_verbose and 'x' or ''}}"
+teleport_vxverbose: "{{teleport_is_verbose  and '-x' or ''}}"
