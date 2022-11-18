@@ -42,9 +42,9 @@ ARG WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
 #
 ENV \
     APP_TYPE="$APP_TYPE" \
-    BUILD_DEV="$BUILD_DEV" \
     APP_USER="${APP_USER:-$APP_TYPE}" \
     APP_GROUP="${APP_GROUP:-$APP_TYPE}" \
+    BUILD_DEV="$BUILD_DEV" \
     CFLAGS="$CFLAGS" \
     C_INCLUDE_PATH="$C_INCLUDE_PATH" \
     CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH" \
@@ -56,6 +56,7 @@ ENV \
     PIP_SRC="$PIP_SRC" \
     PYTHONUNBUFFERED="1" \
     PY_VER="$PY_VER" \
+    TZ="$TZ" \
     VSCODE_VERSION="$VSCODE_VERSION" \
     WITH_VSCODE="$WITH_VSCODE"
 WORKDIR /code
@@ -67,6 +68,7 @@ RUN bash -exc ': \
     && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" apt.txt \
     && apt-get install -qq -y $(sed -re "/$DEV_DEPENDENCIES_PATTERN/,$ d" apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
     && apt-get clean all && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
+    && printf "${SETUPTOOLS_REQ}\n${PIP_REQ}\n${PIPENV_REQ}\n${WHEEL_REQ}\n\n" > pip_reqs.txt \
   '
 
 RUN bash -exc ': \
@@ -114,7 +116,7 @@ RUN bash -exc ': \
     && : handle retrocompat with both old and new layouts /requirements.txt and /requirements/requirements.txt \
     && find -maxdepth 1 -iname \"requirement*txt\" -or -name \"Pip*\" | sed -re \"s|./||\" \
     | while read r;do mv -vf \${r} requirements && ln -fsv requirements/\${r};done \
-    && venv/bin/pip install -U --no-cache-dir \"\${SETUPTOOLS_REQ}\" \"\${WHEEL_REQ}\" \"\${PIPENV_REQ}\" \"\${PIP_REQ}\" \
+    && venv/bin/pip install -U --no-cache-dir -r pip_reqs.txt \
     && set +x && . venv/bin/activate && set -x\
     && if [ -e Pipfile ] || [ \"x${FORCE_PIPENV}\" = \"x1\" ];then \
         pipenv_args=\"\" \
