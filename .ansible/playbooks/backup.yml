@@ -6,6 +6,7 @@
     tags: ["cops_django_lifecycle_prebackup"]
     block:
     - include_role: {name: django_vars, allow_duplicates: false, public: true}
+    become: true
   - block:
     - stat: {path: "{{cops_django_dir}}"}
       register: has_project_directory
@@ -14,6 +15,7 @@
         app_is_available: "{{has_project_directory.stat.exists}}"
     - include_role: {name: "corpusops.roles/project_backup", public: false}
       when: "app_is_available"
+    become: true
     vars:
       cops_project_backup_postgresql: "{{cops_django_backup_postgresql}}"
       cops_project_backup_paths_to_backup: "{{cops_django_backup_paths_to_backup}}"
