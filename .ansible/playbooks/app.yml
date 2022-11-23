@@ -8,3 +8,4 @@
     block:
     - include_role: {name: django_vars, allow_duplicates: false, public: true}
     - include_role: {name: django,      allow_duplicates: false}
+    become: true
