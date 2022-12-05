@@ -83,6 +83,7 @@ FINDPERMS_PERMS_DIRS_CANDIDATES="${FINDPERMS_PERMS_DIRS_CANDIDATES:-"public priv
 FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"public private data"}"
 export APP_TYPE="${APP_TYPE:-django}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
+export HOST_USER_UID="${HOST_USER_UID:-$(id -u $APP_USER)}"
 export INIT_HOOKS_DIR="${INIT_HOOKS_DIR:-/code/sys/scripts/hooks}"
 export APP_GROUP="$APP_USER"
 export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
@@ -250,6 +251,10 @@ services_setup() {
 
 fixperms() {
     if [[ -n $NO_FIXPERMS ]];then return 0;fi
+	if [ "$(id -u $APP_USER)" != "$HOST_USER_UID" ];then
+	    groupmod -g $HOST_USER_UID $APP_USER
+	    usermod -u $HOST_USER_UID -g $HOST_USER_UID $APP_USER
+	fi
     for i in /etc/{crontabs,cron.d} /etc/logrotate.d /etc/supervisor.d;do
         if [ -e $i ];then
             while read f;do
