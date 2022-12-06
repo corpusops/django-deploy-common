@@ -78,7 +78,7 @@ RUN bash -exc ': \
     && : "install packages" \
     && apt-get update  -qq \
     && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" apt.txt \
-    && apt-get install -qq -y $(sed -re "/$DEV_DEPENDENCIES_PATTERN/,$ d" apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
+    && apt-get install -qq -y --no-install-recommends $(sed -re "/$DEV_DEPENDENCIES_PATTERN/,$ d" apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
     && apt-get clean all && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
     && printf "${SETUPTOOLS_REQ}\n${PIP_REQ}\n${PIPENV_REQ}\n${WHEEL_REQ}\n\n" > pip_reqs.txt \
   '
@@ -108,7 +108,7 @@ FROM base AS appsetup
 RUN bash -exc ': \
     && : "install dev packages" \
     && apt-get update  -qq \
-    && apt-get install -qq -y $(cat apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
+    && apt-get install -qq -y --no-install-recommends $(cat apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
     && apt-get clean all && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
     '
 # Install now python deps without editable filter
