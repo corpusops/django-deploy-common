@@ -4,7 +4,8 @@ cops_django_project_module_name: "{{cops_django_name}}"
 cops_django_settings_module: "{{cops_django_project_module_name}}.settings.instances.{{cops_django_deploy_env}}"
 cops_django_project_dir: "./src/{{cops_django_project_module_name.replace('.', '/')}}"
 cops_django_front_dir: "{{cops_django_project_dir}}"
-cops_django_py_ver: "3.7"
+# builtin in the image
+# cops_django_py_ver: "3.7"
 cops_django_default_deploy_env: "dev"
 cops_django_default_docker_tag: "latest"
 cops_django_default_gitref: "master"
@@ -170,7 +171,8 @@ cops_django_dotenv_defaults: |-
   DJANGO__API_PORT={{cops_django_api_port}}
   APP_TYPE=django
   DJANGO_SETTINGS_MODULE={{cops_django_settings_module}}
-  DJANGO_PY_VER={{ cops_django_py_ver }}
+  # builtin in the image
+  # DJANGO_PY_VER={{ cops_django_py_ver }}
   DJANGO_NAME={{ cops_django_name }}
   COMPOSE_PROJECT_NAME={{cops_django_composename}}
   CI_COMMIT_SHA={{cops_django_gitref}}
