@@ -8,62 +8,60 @@
 # ( See https://github.com/moby/moby/issues/37345 && https://github.com/moby/moby/issues/37622#issuecomment-412101935 )
 # version: 3
 ARG \
-    UBUNTU_APT_MIRROR='https://fr.archive.ubuntu.com/ubuntu/' \
-    CANONICAL_APT_MIRROR='https://fr.archive.canonical.com/ubuntu/' \
     APP_GROUP= \
     APP_TYPE=django \
     APP_USER= \
     BASE=corpusops/ubuntu-bare:focal \
+    BASE_DIR=/code \
     BUILD_DEV= \
+    CANONICAL_APT_MIRROR='https://fr.archive.canonical.com/ubuntu/' \
     CFLAGS= \
     C_INCLUDE_PATH=/usr/include/gdal/ \
-    BASE_DIR=/code \
     CPLUS_INCLUDE_PATH=/usr/include/gdal/ \
     CPPLAGS= \
     DEBIAN_FRONTEND=noninteractive \
     DEV_DEPENDENCIES_PATTERN='^#\s*dev dep' \
+    DEV_REQS=requirements-dev.txt \
     DOCS_FOLDERS='docs' \
     FORCE_PIP=0 \
     FORCE_PIPENV=0 \
+    GPG_KEYS_SERVERS="hkp://p80.pool.sks-keyservers.net:80 hkp://ipv4.pool.sks-keyservers.net hkp://pgp.mit.edu:80" \
     HOST_USER_UID=1000 \
     LANG=fr_FR.utf8 \
     LANGUAGE=fr_FR \
-    REQS=requirements.txt \
-    DEV_REQS=requirements-dev.txt \
     LDFLAGS= \
+    LOCAL_DIR=/local \
     MINIMUM_PIPENV_VERSION=2020.11.15 \
     MINIMUM_PIP_VERSION=20.2.4 \
     MINIMUM_SETUPTOOLS_VERSION=50.3.2 \
     MINIMUM_WHEEL_VERSION=0.35.1 \
-    PY_VER=3.6 \
     PYTHONUNBUFFERED=1 \
+    PY_VER=3.6 \
+    REQS=requirements.txt \
     SECRET_KEY=build_time_key_rV2rH3qU0qC1oD6d \
     TZ=Europe/Paris \
-    LOCAL_DIR=/local \
+    UBUNTU_APT_MIRROR='https://fr.archive.ubuntu.com/ubuntu/' \
     VSCODE_VERSION= \
     WITH_VSCODE=
 ARG \
+    APP_GROUP="${APP_GROUP:-$APP_TYPE}" \
+    APP_USER="${APP_USER:-$APP_TYPE}" \
     HELPERS=$BASE \
     HISTFILE="${LOCAL_DIR}/.bash_history" \
-    PSQL_HISTORY="${LOCAL_DIR}/.psql_history" \
-    MYSQL_HISTFILE="${LOCAL_DIR}/.mysql_history" \
     IPYTHONDIR="${LOCAL_DIR}/.ipython" \
-    STRIP_HELPERS="forego confd remco" \
+    MYSQL_HISTFILE="${LOCAL_DIR}/.mysql_history" \
+    PATH="$BASE_DIR/sbin:$BASE_DIR/bin:$BASE_DIR/venv/bin:$BASE_DIR/.bin:$BASE_DIR/node_modules/.bin:/cops_helpers:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin" \
     PIPENV_REQ="pipenv>=${MINIMUM_PIP_VERSION}" \
     PIP_REQ="pip==${MINIMUM_PIP_VERSION}" \
     PIP_SRC=$BASE_DIR/pipsrc \
+    PSQL_HISTORY="${LOCAL_DIR}/.psql_history" \
     SETUPTOOLS_REQ="setuptools>=${MINIMUM_SETUPTOOLS_VERSION}" \
-    WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}" \
-    PIP_SRC=$BASE_DIR/pipsrc \
-    \
-    APP_GROUP="${APP_GROUP:-$APP_TYPE}" \
-    APP_USER="${APP_USER:-$APP_TYPE}" \
-    \
+    STRIP_HELPERS="forego confd remco" \
     VIRTUAL_ENV="$BASE_DIR/venv" \
-    PATH="$BASE_DIR/bin:$BASE_DIR/venv/bin:$BASE_DIR/.bin:$BASE_DIR/node_modules/.bin:/cops_helpers:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+    WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
 #
 
-FROM $HELPERS as helpers
+FROM $HELPERS AS helpers
 FROM $BASE AS base
 USER root
 # inherit all global args (think to sync this block with runner stage)
@@ -77,32 +75,34 @@ ARG \
     LOCAL_DIR HISTFILE PSQL_HISTORY MYSQL_HISTFILE IPYTHONDIR \
     VSCODE_VERSION WITH_VSCODE DOCS_FOLDERS
 ENV \
-    LOCAL_DIR="$LOCAL_DIR" \
-    HISTFILE="$HISTFILE" \
-    PSQL_HISTORY="$PSQL_HISTORY" \
-    MYSQL_HISTFILE="$MYSQL_HISTFILE" \
-    IPYTHONDIR="$IPYTHONDIR" \
-    BASE_DIR="$BASE_DIR" \
-    PATH="$PATH" \
-    VIRTUAL_ENV="$VIRTUAL_ENV" \
-    CFLAGS="$CFLAGS" \
     APP_TYPE="$APP_TYPE" \
+    APP_GROUP="${APP_GROUP}" \
+    APP_USER="${APP_USER}" \
+    BASE_DIR="$BASE_DIR" \
     BUILD_DEV="$BUILD_DEV" \
     CFLAGS="$CFLAGS" \
     C_INCLUDE_PATH="$C_INCLUDE_PATH" \
     CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH" \
     CPPLAGS="$CPPFLAGS" \
     DEBIAN_FRONTEND="$DEBIAN_FRONTEND" \
-    PYTHONUNBUFFERED="$PYTHONUNBUFFERED" \
+    HISTFILE="$HISTFILE" \
+    IPYTHONDIR="$IPYTHONDIR" \
     LANG="$LANG" \
     LC_ALL="$LANG" \
     LDFLAGS="$LDFLAGS" \
+    LOCAL_DIR="$LOCAL_DIR" \
+    MYSQL_HISTFILE="$MYSQL_HISTFILE" \
+    PATH="$PATH" \
     PIP_SRC="$PIP_SRC" \
+    PSQL_HISTORY="$PSQL_HISTORY" \
+    PYTHONUNBUFFERED="$PYTHONUNBUFFERED" \
     PY_VER="$PY_VER" \
     TZ="$TZ" \
+    VIRTUAL_ENV="$VIRTUAL_ENV" \
     VSCODE_VERSION="$VSCODE_VERSION" \
     WITH_VSCODE="$WITH_VSCODE"
 WORKDIR $BASE_DIR
+USER root
 ADD apt.txt ./
 RUN \
     --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt \
@@ -154,15 +154,16 @@ RUN \
 
 
 FROM base AS appsetup
-# inherit all global args
+# inherit all global args (think to sync this block with runner stage)
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
     LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
-    FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ \
+    FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
-    VSCODE_VERSION WITH_VSCODESER $APP_TYPE
+    LOCAL_DIR HISTFILE PSQL_HISTORY MYSQL_HISTFILE IPYTHONDIR \
+    VSCODE_VERSION WITH_VSCODE DOCS_FOLDERS
 RUN \
     --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt \
     --mount=type=cache,id=cops${BASE}list,target=/var/lib/apt/lists \
@@ -173,15 +174,15 @@ RUN \
     && : "$(date) end"'
 
 # Handle images refresh (rebuild from BASE_IMAGE where BASE_IMAGE is an older version of this image)
-RUN for i in public/static/* $DOCS_FOLDERS lib src private sys local/${APP_TYPE}-deploy-common \
+RUN for i in keys/* $DOCS_FOLDERS init sys local/${APP_TYPE}-deploy-common .git public/static/* lib src private \
              setup.* *.ini *.rst *.md *.txt README* requirements* \
     ;do if ! ( echo "$i" | egrep -q "pip_reqs.txt" );then ( rm -vrf $i || true );fi;done
 
-# Install now python deps without editable filter
+# Install now app deps without editable filter
 ADD --chown=${APP_TYPE}:${APP_TYPE} lib lib/
 # warning: requirements adds are done via the *txt glob
 ADD --chown=${APP_TYPE}:${APP_TYPE} setup.* *.ini *.rst *.md *.txt README* requirements* ./
-# only bring minimal py for now as we get only deps (CI optims)
+# only bring minimal app for now as we get only deps (CI optims)
 ADD --chown=${APP_TYPE}:${APP_TYPE} src      ./src/
 ADD --chown=${APP_TYPE}:${APP_TYPE} private  ./private/
 
@@ -217,17 +218,25 @@ RUN \
     && if [ "x$WITH_VSCODE" = "x1" ];then python -m pip install -U "ptvsd${VSCODE_VERSION}";fi \
     && if [ -e setup.py ];then python -m pip install --no-deps -e .;fi \
     && : "$(date) end"'
-
+# We make an intermediary init folder to allow to have the
+#
+# entrypoint mounted as a volume in dev
+# cp -frnv => keeps existing stuff, add new stuff, this allows for existing files in project
+# overriding the common stuff
+# common -> sys
+# sys -> init
+# ==> init contains files from both local sys and common, common cannot override content from local sys
 FROM appsetup AS final
-# inherit all global args
+# inherit all global args (think to sync this block with runner stage)
 ARG \
-    BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
+    UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
     LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
-    VSCODE_VERSION WITH_VSCODESER $APP_TYPE
+    LOCAL_DIR HISTFILE PSQL_HISTORY MYSQL_HISTFILE IPYTHONDIR \
+    VSCODE_VERSION WITH_VSCODE DOCS_FOLDERS
 RUN gosu $APP_TYPE bash -c 'set -exo pipefail \
     && : "$(date) ${APP_TYPE} basic setup" \
     && for i in data public/static public/media;do if [ ! -e $i ];then mkdir -p $i;fi;done \
@@ -241,8 +250,6 @@ ADD --chown=${APP_TYPE}:${APP_TYPE} sys                          $BASE_DIR/sys
 ADD --chown=${APP_TYPE}:${APP_TYPE} local/${APP_TYPE}-deploy-common/  $BASE_DIR/local/${APP_TYPE}-deploy-common/
 ADD --chown=${APP_TYPE}:${APP_TYPE} $DOCS_FOLDERS                $BASE_DIR/docs/
 
-## if we found a static dist inside the sys directory, it has been injected during
-## the CI process, we just unpack it
 RUN bash -c 'set -exo pipefail \
     && : "inject any SSH config & configure ssh client" \
     && for i in keys sys/ssh;do if [ -e $i ];then cp -rfv $i/. /home/${APP_USER}/.ssh;fi;done \
@@ -251,12 +258,14 @@ RUN bash -c 'set -exo pipefail \
     && find /home/${APP_USER}/.ssh -type f -name "*.pub" | while read f;do chmod 0644 "$f";done \
     && chown -R ${APP_USER}:${APP_GROUP} /home/${APP_USER}/.ssh \
     \
-    && : "create layout" \
     && : "$(date) end"'
 
 USER root
 RUN bash -c 'set -exo pipefail \
+    && : "create layout" \
     && mkdir -vp sys init local/${APP_TYPE}-deploy-common/sys \
+    && : "if we found a static dist inside the sys directory, it has been injected during" \
+    && : "the CI process, we just unpack it" \
     && if [ -e sys/statics ];then : "unpack" \
         && while read f;do tar xf  ${f};done < <(find sys/statics -name "*.tar") \
         && while read f;do tar xJf ${f};done < <(find sys/statics -name "*.txz"  -or -name "*.xz") \
@@ -290,7 +299,7 @@ ADD --chown=${APP_TYPE}:${APP_TYPE} .git                         $BASE_DIR/.git
 CMD "/init.sh"
 
 FROM base AS runner
-# inherit all global args
+# inherit all global args (think to sync this block with runner stage)
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
@@ -301,29 +310,30 @@ ARG \
     LOCAL_DIR HISTFILE PSQL_HISTORY MYSQL_HISTFILE IPYTHONDIR \
     VSCODE_VERSION WITH_VSCODE DOCS_FOLDERS
 ENV \
-    LOCAL_DIR="$LOCAL_DIR" \
-    HISTFILE="$HISTFILE" \
-    PSQL_HISTORY="$PSQL_HISTORY" \
-    MYSQL_HISTFILE="$MYSQL_HISTFILE" \
-    IPYTHONDIR="$IPYTHONDIR" \
-    BASE_DIR="$BASE_DIR" \
-    PATH="$PATH" \
-    VIRTUAL_ENV="$VIRTUAL_ENV" \
-    CFLAGS="$CFLAGS" \
     APP_TYPE="$APP_TYPE" \
+    APP_GROUP="${APP_GROUP}" \
+    APP_USER="${APP_USER}" \
+    BASE_DIR="$BASE_DIR" \
     BUILD_DEV="$BUILD_DEV" \
     CFLAGS="$CFLAGS" \
     C_INCLUDE_PATH="$C_INCLUDE_PATH" \
     CPLUS_INCLUDE_PATH="$CPLUS_INCLUDE_PATH" \
     CPPLAGS="$CPPFLAGS" \
     DEBIAN_FRONTEND="$DEBIAN_FRONTEND" \
-    PYTHONUNBUFFERED="$PYTHONUNBUFFERED" \
+    HISTFILE="$HISTFILE" \
+    IPYTHONDIR="$IPYTHONDIR" \
     LANG="$LANG" \
     LC_ALL="$LANG" \
     LDFLAGS="$LDFLAGS" \
+    LOCAL_DIR="$LOCAL_DIR" \
+    MYSQL_HISTFILE="$MYSQL_HISTFILE" \
+    PATH="$PATH" \
     PIP_SRC="$PIP_SRC" \
+    PSQL_HISTORY="$PSQL_HISTORY" \
+    PYTHONUNBUFFERED="$PYTHONUNBUFFERED" \
     PY_VER="$PY_VER" \
     TZ="$TZ" \
+    VIRTUAL_ENV="$VIRTUAL_ENV" \
     VSCODE_VERSION="$VSCODE_VERSION" \
     WITH_VSCODE="$WITH_VSCODE"
 RUN --mount=type=bind,from=final,target=/s \
