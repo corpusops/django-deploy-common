@@ -96,6 +96,7 @@ export DJANGO_LISTEN=${DJANGO_LISTEN:-"0.0.0.0:8000"}
 # export CELERY_SCHEDULER=${CELERY_SCHEDULER:-celery.beat.PersistentScheduler}
 export CELERY_SCHEDULER=${CELERY_SCHEDULER:-django_celery_beat.schedulers:DatabaseScheduler}
 export CELERY_LOGLEVEL=${CELERY_LOGLEVEL:-info}
+export CELERY_WORKER_POOL=${CELERY_WORKER_POOL:-prefork}
 export DJANGO_CELERY=${DJANGO_CELERY:-project.celery:app}
 export DJANGO_CELERY_BROKER="${DJANGO_CELERY_BROKER:-amqp}"
 export DJANGO_CELERY_HOST="${DJANGO_CELERY_HOST:-celery-broker}"
