@@ -110,6 +110,7 @@ cops_django_docker_env_freeform: |-
   {{ cops_django_docker_env_defaults}}
   {{ cops_django_docker_env_extra}}
 # cops_django_gunicorn_class: "sync"
+cops_django_gunicorn_workers: "4"
 cops_django_gunicorn_class: "gevent"
 cops_django_gunicorn_extra_args: ""
 cops_django_generic_db_mode: postgres
@@ -154,6 +155,7 @@ cops_django_dotenv_defaults: |-
   DJANGO__SENTRY_TAGS={{cops_django_sentry_tags|join(',')}}
   {% endif %}
   # gunicorn
+  GUNICORN_WORKERS={{cops_django_gunicorn_workers}}
   GUNICORN_CLASS={{cops_django_gunicorn_class}}
   GUNICORN_EXTRA_ARGS={{cops_django_gunicorn_extra_args}}
   # This need to be changed in production
