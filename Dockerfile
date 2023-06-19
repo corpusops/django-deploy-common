@@ -14,7 +14,7 @@ ARG \
     BASE=corpusops/ubuntu-bare:focal \
     BASE_DIR=/code \
     BUILD_DEV= \
-    CANONICAL_APT_MIRROR='https://fr.archive.canonical.com/ubuntu/' \
+    CANONICAL_APT_MIRROR='http://archive.canonical.com/ubuntu/' \
     CFLAGS= \
     C_INCLUDE_PATH=/usr/include/gdal/ \
     CPLUS_INCLUDE_PATH=/usr/include/gdal/ \
@@ -40,7 +40,7 @@ ARG \
     REQS=requirements.txt \
     SECRET_KEY=build_time_key_rV2rH3qU0qC1oD6d \
     TZ=Europe/Paris \
-    UBUNTU_APT_MIRROR='https://fr.archive.ubuntu.com/ubuntu/' \
+    UBUNTU_APT_MIRROR='http://archive.ubuntu.com/ubuntu/' \
     VSCODE_VERSION= \
     WITH_VSCODE=
 ARG \
