@@ -84,8 +84,8 @@ cops_django_email_server: mailcatcher
 cops_django_email_host_user: ''
 cops_django_email_host_password: ''
 cops_django_email_host_port: 1025
-cops_django_email_use_ssl: 'no'
-cops_django_email_use_tls: 'no'
+cops_django_email_use_ssl: ''
+cops_django_email_use_tls: ''
 cops_django_http_protect_user: "root"
 cops_django_http_protect_password: "rootroot"
 cops_django_doc_protect_user: "{{cops_django_http_protect_user}}"
@@ -123,8 +123,7 @@ cops_django_dotenv_defaults: |-
   DJANGO__EMAIL_HOST={{cops_django_email_server}}
   {% if "{0}".format(cops_django_email_use_tls).lower() in ['yes', 'no'] %}
   DJANGO__EMAIL_USE_TLS={{cops_django_email_use_tls}}
-  {% endif %}
-  {% if "{0}".format(cops_django_email_use_ssl).lower() in ['yes', 'no'] %}
+  {% elif "{0}".format(cops_django_email_use_ssl).lower() in ['yes', 'no'] %}
   DJANGO__EMAIL_USE_SSL={{cops_django_email_use_ssl}}
   {% endif %}
   DJANGO__EMAIL_PORT={{cops_django_email_host_port}}
