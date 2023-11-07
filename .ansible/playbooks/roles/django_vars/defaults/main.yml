@@ -109,12 +109,16 @@ cops_django_db_mode: "{{cops_django_generic_db_mode}}"
 # one of ftp|ssh
 cops_django_ftp_mode: ftp
 cops_django_docker_env_defaults: ""
+cops_django_redirect_server_aliases: "off"
 # free form for params inside dockerenv
 cops_django_dotenv_defaults: |-
   # cors
   DJANGO__CORS_ORIGIN_WHITELIST={{cops_django_hosts_whitelist}}
   DJANGO__CORS_ORIGIN_ALLOW_ALL={{cops_django_cors_origin_allow_all}}
   DJANGO__COPS_ALL_HOSTNAMES={{cops_django_hostnames}}
+  NGINX_SERVERNAME={{cops_django_hostname}}
+  NGINX_SERVER_ALIASES={{cops_django_alternate_hostnames|join(' ')}}
+  NGINX_REDIRECT_SERVER_ALIASES={{cops_django_redirect_server_aliases}}
   {% if cops_django_devmode %}
   DJANGO__DEBUG=y
   {% endif %}
