@@ -68,7 +68,7 @@ export DJANGO_CELERY=${DJANGO_CELERY:-project.celery:app}
 export DJANGO_CELERY_BROKER="${DJANGO_CELERY_BROKER:-amqp}"
 export DJANGO_CELERY_HOST="${DJANGO_CELERY_HOST:-celery-broker}"
 export DJANGO_CELERY_VHOST="${DJANGO_CELERY_VHOST:-}"
-if ( echo "$DJANGO_CELERY_BROKER" | egrep -q "rabbitmq|amqp" );then
+if ( echo "$DJANGO_CELERY_BROKER" | grep -E -q "rabbitmq|amqp" );then
     burl="amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@$DJANGO_CELERY_HOST/$DJANGO_CELERY_VHOST/"
 elif [[ "$DJANGO_CELERY_BROKER" = "redis" ]];then
     burl="redis://$DJANGO_CELERY_HOST/"
@@ -180,7 +180,7 @@ configure() {
 #               like database migrations, etc
 services_setup() {
     if [[ -z $NO_IMAGE_SETUP ]];then
-        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | egrep -q "$DO_IMAGE_SETUP_MODES" ) ;then
+        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | grep -E -q "$DO_IMAGE_SETUP_MODES" ) ;then
             : "continue services_setup"
         else
             log "No image setup"
@@ -256,7 +256,7 @@ do_fg() {
         && exec gosu $APP_USER ./manage.py runserver $DJANGO_LISTEN )
 }
 
-if ( echo $1 | egrep -q -- "--help|-h|help" );then
+if ( echo $1 | grep -E -q -- "--help|-h|help" );then
     usage
 fi
 
@@ -277,7 +277,7 @@ pre() {
 if [[ -n $NO_STARTUP_LOGS ]];then pre 2>/dev/null;else pre;fi
 
 if [[ -z "$@" ]]; then
-    if ! ( echo $IMAGE_MODE | egrep -q "$IMAGE_MODES" );then
+    if ! ( echo $IMAGE_MODE | grep -E -q "$IMAGE_MODES" );then
         log "Unknown image mode ($IMAGE_MODES): $IMAGE_MODE"
         exit 1
     fi
