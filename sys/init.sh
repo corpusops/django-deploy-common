@@ -57,7 +57,7 @@ DEFAULT_NO_MIGRATE=
 DEFAULT_NO_COMPILE_MESSAGES=
 DEFAULT_NO_STARTUP_LOGS=
 DEFAULT_NO_COLLECT_STATIC=
-if !( echo $IMAGE_MODE|egrep -q "$IMAGE_MODES_NO_RUN" ) || [[ -n $@ ]];then
+if !( echo $IMAGE_MODE|grep -E -q "$IMAGE_MODES_NO_RUN" ) || [[ -n $@ ]];then
     DEFAULT_NO_STARTUP_LOGS=1
     DEFAULT_NO_MIGRATE=1
     DEFAULT_NO_COMPILE_MESSAGES=1
@@ -101,7 +101,7 @@ export DJANGO_CELERY=${DJANGO_CELERY:-project.celery:app}
 export DJANGO_CELERY_BROKER="${DJANGO_CELERY_BROKER:-amqp}"
 export DJANGO_CELERY_HOST="${DJANGO_CELERY_HOST:-celery-broker}"
 export DJANGO_CELERY_VHOST="${DJANGO_CELERY_VHOST:-}"
-if ( echo "$DJANGO_CELERY_BROKER" | egrep -q "rabbitmq|amqp" );then
+if ( echo "$DJANGO_CELERY_BROKER" | grep -E -q "rabbitmq|amqp" );then
     burl="amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@$DJANGO_CELERY_HOST/$DJANGO_CELERY_VHOST/"
 elif [[ "$DJANGO_CELERY_BROKER" = "redis" ]];then
     burl="redis://$DJANGO_CELERY_HOST/"
@@ -212,7 +212,7 @@ configure() {
 #               like database migrations, etc
 services_setup() {
     if [[ -z $NO_IMAGE_SETUP ]];then
-        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | egrep -q "$DO_IMAGE_SETUP_MODES" ) ;then
+        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | grep -E -q "$DO_IMAGE_SETUP_MODES" ) ;then
             : "continue services_setup"
         else
             log "No image setup"
@@ -298,7 +298,7 @@ do_fg() {
         && exec gosu $APP_USER ./manage.py runserver $DJANGO_LISTEN )
 }
 
-if ( echo $1 | egrep -q -- "--help|-h|help" );then
+if ( echo $1 | grep -E -q -- "--help|-h|help" );then
     usage
 fi
 
@@ -313,14 +313,14 @@ execute_hooks() {
     if [ ! -d "$hdir" ];then return 0;fi
     shift
     while read f;do
-        if ( echo "$f" | egrep -q "\.sh$" );then
+        if ( echo "$f" | grep -E -q "\.sh$" );then
             debuglog "running shell hook($step): $f"
             . "${f}"
         else
             debuglog "running executable hook($step): $f"
             "$f" "$@"
         fi
-    done < <(find "$hdir" -type f -executable 2>/dev/null | egrep -iv readme | sort -V; )
+    done < <(find "$hdir" -type f -executable 2>/dev/null | grep -E -iv readme | sort -V; )
 }
 
 # Run app
@@ -340,13 +340,13 @@ pre() {
 execute_hooks pre "$@"
 
 # reinstall in develop any missing editable dep
-if [ -e Pipfile ] && ( egrep -q  "editable\s*=\s*true" Pipfile ) && [[ -z "$(ls -1 ${PIP_SRC}/ | grep -vi readme)" ]] && [[ "$NO_PIPENV_INSTALL" != "1" ]];then
+if [ -e Pipfile ] && ( grep -E -q  "editable\s*=\s*true" Pipfile ) && [[ -z "$(ls -1 ${PIP_SRC}/ | grep -vi readme)" ]] && [[ "$NO_PIPENV_INSTALL" != "1" ]];then
     pipenv install $PIPENV_INSTALL_ARGS 1>&2
 fi
 
 # only display startup logs when we start in daemon mode
 # and try to hide most when starting an (eventually interactive) shell.
-if ! ( echo "$NO_STARTUP_LOGS" | egrep -iq "^(no?)?$" );then pre 2>/dev/null;else pre;fi
+if ! ( echo "$NO_STARTUP_LOGS" | grep -E -iq "^(no?)?$" );then pre 2>/dev/null;else pre;fi
 
 execute_hooks post "$@"
 
@@ -364,7 +364,7 @@ fi
 
 
 if [[ -z "$@" ]]; then
-    if ! ( echo $IMAGE_MODE | egrep -q "$IMAGE_MODES" );then
+    if ! ( echo $IMAGE_MODE | grep -E -q "$IMAGE_MODES" );then
         log "Unknown image mode ($IMAGE_MODES): $IMAGE_MODE"
         exit 1
     fi
@@ -383,7 +383,7 @@ else
     if [[ "${1-}" = "shell" ]];then shift;fi
     # retrocompat with old images
     cmd="$@"
-    if ( echo "$cmd" |egrep -q "tox.*/bin/sh -c tests" );then
+    if ( echo "$cmd" |grep -E -q "tox.*/bin/sh -c tests" );then
         cmd=$( echo "${cmd}"|sed -r -e "s/-c tests/-exc '.\/manage.py test/" -e "s/$/'/g" )
     fi
     execute_hooks beforeshell "$@"
