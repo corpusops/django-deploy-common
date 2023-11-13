@@ -17,12 +17,16 @@ fi
 
 PYCHARM_DIRS="${PYCHARM_DIRS:-"/opt/pycharm /opt/.pycharm /opt/.pycharm_helpers"}"
 OPYPATH="${PYTHONPATH-}"
-for i in $PYCHARM_DIRS;do
-    if [ -e "$i" ];then
+if [ $(ps afux|grep python-pycharm|grep -v grep|wc -l) -gt 0 ];then
         IMAGE_MODE="${FORCE_IMAGE_MODE-pycharm}"
-        break
-    fi
-done
+else
+    for i in $PYCHARM_DIRS;do
+        if [ -e "$i" ];then
+            IMAGE_MODE="${FORCE_IMAGE_MODE-pycharm}"
+            break
+        fi
+    done
+fi
 
 # load locales & default env
 # load this first as it resets $PATH
@@ -298,7 +302,7 @@ do_fg() {
         && exec gosu $APP_USER ./manage.py runserver $DJANGO_LISTEN )
 }
 
-if ( echo $1 | grep -E -q -- "--help|-h|help" );then
+if ( echo $1 | grep -E -q -- "(--help|-h|help)$" );then
     usage
 fi
 
