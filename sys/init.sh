@@ -16,6 +16,7 @@ if ( ip -4 route list match 0/0 &>/dev/null );then
 fi
 
 PYCHARM_DIRS="${PYCHARM_DIRS:-"/opt/pycharm /opt/.pycharm /opt/.pycharm_helpers"}"
+PYCHARM_INTEGRATION_DEBUG=${PYCHARM_INTEGRATION_DEBUG-}
 OPYPATH="${PYTHONPATH-}"
 if [ $(ps afux|grep python-pycharm|grep -v grep|wc -l) -gt 0 ];then
         IMAGE_MODE="${FORCE_IMAGE_MODE-pycharm}"
@@ -359,6 +360,13 @@ if [[ $IMAGE_MODE = "pycharm" ]];then
     cmdargs="$@"
     for i in ${PYCHARM_DIRS};do if [ -e "$i" ];then chown -Rf $APP_USER "$i";fi;done
     subshell="set -e"
+    chown -Rf $APP_USER /tmp || true
+    if [[ -n "${PYCHARM_INTEGRATION_DEBUG-}" ]];then
+        f=$(mktemp ${TMPDIR:-/tmp}/pycharm-debug.XXXXXX)
+        echo "$(date) $cmdargs" >>/code/data/pycharm-log.txt
+        echo "After you delete $f, will launch $(tail -n 1 /code/data/pycharm-log.txt)" >&2
+        touch $f && while [ -e $f ];do sleep 1;done
+    fi
     subshell="$subshell;if [ -e \$VENV ];then . \$VENV/bin/activate;fi"
     subshell="$subshell;cd $ODIR"
     subshell="$subshell;export PYTHONPATH=\"$OPYPATH:\${PYTHONPATH-}·\""
