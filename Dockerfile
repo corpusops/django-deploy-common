@@ -172,6 +172,11 @@ RUN \
     && apt-get install -qq -y --no-install-recommends $(cat apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
     && : "$(date) end"'
 
+# Handle images refresh (rebuild from BASE_IMAGE where BASE_IMAGE is an older version of this image)
+RUN for i in public/static/* $DOCS_FOLDERS lib src private sys local/${APP_TYPE}-deploy-common \
+             setup.* *.ini *.rst *.md *.txt README* requirements* \
+    ;do if ! ( echo "$i" | egrep -q "pip_reqs.txt" );then ( rm -vrf $i || true );fi;done
+
 # Install now python deps without editable filter
 ADD --chown=${APP_TYPE}:${APP_TYPE} lib lib/
 # warning: requirements adds are done via the *txt glob
