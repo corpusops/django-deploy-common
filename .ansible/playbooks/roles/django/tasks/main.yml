@@ -111,31 +111,3 @@
   register: restarted_docker_services
   until: "restarted_docker_services.rc == 0"
   tags: [django_service_restart, django_service, service]
-## as we use a named volume for nginx sidekar container, also
-## purge the obsolete volumes leftover in-between
-- shell: |
-    set -ex
-    cd "{{cops_django_dir}}"
-    if [[ -n "{{cops_django_docker_tag}}" ]];then
-    {% for purge_volume in cops_django_purge_volumes %}
-    for v in $(docker volume ls |awk '{print $2 }'|grep -E "^{{cops_django_composename}}-{{purge_volume}}-"|grep -v {{cops_django_docker_tag}});do
-      if ( docker volume inspect $v >/dev/null 2>&1; );then
-        if ! ( docker volume rm -f $v; );then
-          docker volume inspect $v;exit 1;
-        fi
-        echo "purged volume $v">&2
-      fi
-    done
-    {% endfor %}
-    fi
-  # let time to docker to clean volumes
-  args: {executable: /bin/bash}
-  retries: 60
-  delay: 1
-  register: purge_volumes
-  until: "purge_volumes.rc == 0"
-  when:
-  - "cops_django_docker_tag|copsf_asbool"
-  - "cops_django_purge_volumes|copsf_asbool"
-  changed_when: "'purged volume' in purge_volumes.stderr"
-  tags: [django_service_volumepurge, django_service, service]
