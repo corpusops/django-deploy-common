@@ -485,7 +485,7 @@ teleport_post_force_restart_services: "setup-postgres setup-mysql redis memcache
 teleport_restart_dependant_services: |-
   set -e
   cd "{{teleport_wd}}"
-  has_service() { {{teleport_dc}} config |grep -qE "^   +${1}:"; }
+  has_service() { {{teleport_dc}} config |grep -qE "^  +${1}:"; }
   log() { echo "$@" >&2; }
   restarted_services="{{teleport_post_restart_services}}"
   frestarted_services="{{teleport_post_force_restart_services}}"
