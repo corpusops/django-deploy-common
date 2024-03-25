@@ -6,6 +6,7 @@ cops_django_project_dir: "./src/{{cops_django_project_module_name.replace('.', '
 cops_django_front_dir: "{{cops_django_project_dir}}"
 # builtin in the image
 # cops_django_py_ver: "3.7"
+#
 cops_django_default_deploy_env: "dev"
 cops_django_default_docker_tag: "latest"
 cops_django_default_gitref: "master"
@@ -30,6 +31,8 @@ cops_django_composename: "{{forced_cops_django_composename|default(cops_django_d
   (teleport_wd|copsf_basename) or
   cops_django_name)}}"
 cops_django_servicename: "{{cops_django_composename}}"
+cops_django_backuped_dbs_keep_lasts: "1"
+cops_django_backuped_dbs: all
 # docker compose settings (may include ip ip:port)
 cops_django_http_port: 80
 cops_django_https_port: 443
@@ -44,8 +47,10 @@ cops_django_db_password: "secret4gzQNe3c8851VOJ"
 cops_django_db_name: "{{cops_django_name}}"
 cops_django_build_args: "--no-cache django cron"
 # backup could be remove in a-while when we have redeployed it everywhere
+cops_django_started_services_default: "log"
 # do not remove setup-* services for retrocompat !
 cops_django_restarted_services_default: "log db redis memcached setup-mysql setup-postgres setup-db django nginx backup cron"
+cops_django_started_services: "{{cops_django_started_services_default}}"
 cops_django_restarted_services: "{{cops_django_restarted_services_default}}"
 cops_django_purge_volumes: [statics]
 cops_django_medias_owner: "1000"
@@ -157,6 +162,8 @@ cops_django_dotenv_defaults: |-
   MAILCATCHER_PASSWORD={{cops_django_mailcatcher_password}}
   REDIS_URL={{cops_django_redis_url}}
   # db
+  DBS_DBNAMES={{cops_django_backuped_dbs}}
+  DBS_KEEP_LASTS={{cops_django_backuped_dbs_keep_lasts}}
   POSTGRES_HOST={{ cops_django_db_host }}
   POSTGRES_PORT={{ cops_django_db_port }}
   POSTGRES_USER={{ cops_django_db_user }}
@@ -182,7 +189,7 @@ cops_django_dotenv_defaults: |-
   COMPOSE_FILE={{cops_django_compose_files|join(':')}}
   DJANGO__DOC_PROTECT_USER={{cops_django_doc_protect_user}}
   DJANGO__DOC_PROTECT_PASSWORD={{cops_django_doc_protect_password}}
-
+cops_django_dotenv_extra: ""
 cops_django_dotenv: |
   {{cops_django_dotenv_defaults}}
   {{cops_django_dotenv_extra}}
@@ -544,6 +551,7 @@ teleport_verbose: "{{teleport_is_verbose and 'v' or ''}}"
 teleport_vverbose: "{{teleport_is_verbose  and '-v' or ''}}"
 teleport_xverbose: "{{teleport_is_verbose and 'x' or ''}}"
 teleport_vxverbose: "{{teleport_is_verbose  and '-x' or ''}}"
+cops_django_maintenance_flags_dir: /code/data/flags
 
 # not used anymore but used in local inventories, do not remove
 cops_django_py_ver: "3.8"

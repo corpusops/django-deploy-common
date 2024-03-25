@@ -1,5 +1,10 @@
 /logs/crons*.log
-/code/data/crons*.log {
+/code/data/logs/crons/*.log
+/code/data/logs/cron/*.log
+/code/data/logs/*.log
+/code/data/crons/*.log
+/code/data/cron/*.log
+/code/data/cron*.log {
         daily
         size 5M
         compress
