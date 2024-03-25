@@ -38,12 +38,6 @@
   loop: "{{cops_django_sync_theme_contents|dict2items}}"
   tags: [django_sync, django_sync_theme]
 - template:
-    src: "dbsmartbackup.yml"
-    dest: "{{cops_django_dir}}/local/backup/setup/reconfigure.yml"
-    mode: "0640"
-    trim_blocks: false
-  tags: [django_conf]
-- template:
     src: "local.py"
     dest: "{{cops_django_dir}}/local.py"
     mode: "0644"
@@ -84,6 +78,7 @@
   when:
   - "cops_django_pull|copsf_asbool"
   tags: [django_docker, django_docker_pull]
+# systemd service definition and (de)activation
 - include_role: {name: corpusops.roles/docker_compose_service}
   vars:
     _docker_compose_service:
@@ -92,6 +87,44 @@
       project: "{{cops_django_servicename}}"
       restart: "on-failure"
   tags: [django_service_register, django_service, service]
+# start maintenance mode
+- tags: [django_service, django_maintenance, django_disable_maintenance]
+  shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {{cops_django_dc}} run --rm -T -u root --entrypoint bash django -ec "if [ ! -e {{cops_django_maintenance_flags_dir}} ];then mkdir -p {{cops_django_maintenance_flags_dir}};fi;touch {{cops_django_maintenance_flags_dir}}/MAINTENANCE"
+# suspend cron tasks
+- tags: [django_service, django_cron, django_disable_cron]
+  shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {{cops_django_dc}} run --rm -T -u root --entrypoint bash django -ec "if [ ! -e {{cops_django_maintenance_flags_dir}} ];then mkdir -p {{cops_django_maintenance_flags_dir}};fi;touch {{cops_django_maintenance_flags_dir}}/SUSPEND_CRONS"
+# ensure manually handled services are booted
+# to handle sidekar volumes refresh accuratly
+- tags: [django_service, django_restart_service, django_do_restart_service]
+  shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {% for i in cops_django_started_services.split() %}
+    ret=
+    for i in $(seq 30);do
+      {{cops_django_dc}} up -d --no-deps --remove-orphans {{i}}
+      ret=$?
+      if [ "x$ret" = "x0" ];then break;fi
+      sleep 1
+    done
+    if [ "x$ret" != "x0" ];then echo "{{i}}: failed start";exit 1;fi
+    {% endfor %}
+- shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {% for i in cops_django_started_services.split()|reverse %}
+    {{cops_django_dc}} ps --services --filter status=running | grep -E -q "^{{i}}$"
+    {% endfor %}
+  retries: 60
+  delay: 1
+  register: started_docker_services
+  until: "started_docker_services.rc == 0"
 - shell: |
     set -ex
     cd "{{cops_django_dir}}"
@@ -128,3 +161,15 @@
   register: restarted_docker_services
   until: "restarted_docker_services.rc == 0"
   tags: [django_service_restart, django_service, service]
+# remove maintenance mode ----
+- tags: [django_post_restart, django_maintenance, django_disable_maintenance]
+  shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {{cops_django_dc}} run --rm -T -u root --entrypoint bash django -ec "rm -f {{cops_django_maintenance_flags_dir}}/MAINTENANCE"
+# re-enable crons
+- tags: [django_post_restart, django_cron, django_enable_cron]
+  shell: |
+    set -ex
+    cd "{{cops_django_dir}}"
+    {{cops_django_dc}} run --rm -T -u root --entrypoint bash django -ec "rm -f {{cops_django_maintenance_flags_dir}}/SUSPEND_CRONS"

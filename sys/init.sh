@@ -1,4 +1,10 @@
 #!/bin/bash
+# If you need more debug play with these variables:
+# export NO_STARTUP_LOGS=
+# export SHELL_DEBUG=1
+# export DEBUG=1
+# start by the first one, then try the others
+
 SDEBUG=${SDEBUG-}
 DEBUG=${DEBUG:-${SDEBUG-}}
 # activate shell debug if SDEBUG is set
@@ -32,12 +38,13 @@ export PATH=$OPATH
 for VENV in "$BASE_DIR/venv" "$BASE_DIR";do if [ -e "$VENV/bin/activate" ];then export VENV;. "$VENV/bin/activate";break;fi;done
 
 SRC_DIR="${SRC_DIR-}"
+SRC_DIR_NAME=src
 if [[ -z "${SRC_DIR}" ]];then
-    SRC_DIR="$TOPDIR"
-    if [ -e "${SRC_DIR}/src" ];then SRC_DIR="$SRC_DIR/src";fi
+    if [ -e "${TOPDIR}/${SRC_DIR_NAME}" ];then SRC_DIR="$TOPDIR/${SRC_DIR_NAME}";fi
 fi
 
-DEFAULT_IMAGE_MODE=gunicorn
+DEFAULT_IMAGE_MODE="gunicorn"
+
 NO_GUNICORN=${NO_GUNICORN-}
 if [[ -n $NO_GUNICORN ]];then
     # retro compat with old setups
@@ -47,7 +54,7 @@ export IMAGE_MODE=${IMAGE_MODE:-${DEFAULT_IMAGE_MODE}}
 SKIP_STARTUP_DB=${SKIP_STARTUP_DB-}
 SKIP_SYNC_DOCS=${SKIP_SYNC_DOCS-}
 IMAGE_MODES="(shell|cron|gunicorn|fg|celery_worker|celery_beat)"
-IMAGE_MODES_MIGRATE="(gunicorn|fg)"
+IMAGE_MODES_MIGRATE="(fg|gunicorn)"
 NO_START=${NO_START-}
 DJANGO_CONF_PREFIX="${DJANGO_CONF_PREFIX:-"DJANGO__"}"
 DEFAULT_NO_MIGRATE=1
@@ -71,29 +78,36 @@ NO_COLLECT_STATIC=${NO_COLLECT_STATIC-$DEFAULT_NO_COLLECT_STATIC}
 NO_IMAGE_SETUP="${NO_IMAGE_SETUP:-"1"}"
 SKIP_IMAGE_SETUP="${KIP_IMAGE_SETUP:-""}"
 FORCE_IMAGE_SETUP="${FORCE_IMAGE_SETUP:-"1"}"
-DO_IMAGE_SETUP_MODES="${DO_IMAGE_SETUP_MODES:-"fg|gunicorn"}"
+SKIP_SERVICES_SETUP="${SKIP_SERVICES_SETUP-}"
+IMAGE_SETUP_MODES="${IMAGE_SETUP_MODES:-"fg|gunicorn"}"
 export PIP_SRC=${PIP_SRC:-${BASE_DIR}/pipsrc}
 export LOCAL_DIR="${LOCAL_DIR:-/local}"
 NO_PIPENV_INSTALL=${NO_PIPENV_INSTALL-1}
 PIPENV_INSTALL_ARGS="${PIPENV_INSTALL_ARGS-"--ignore-pipfile"}"
 
+# log to stdout which in turn should log to docker logger, do not store local logs
+export RSYSLOG_LOGFORMAT="${RSYSLOG_LOGFORMAT:-'%timegenerated% %syslogtag% %msg%\\n'}"
+export RSYSLOG_OUT_LOGFILE="${RSYSLOG_OUT_LOGFILE:-n}"
+export RSYSLOG_REPEATED_MSG_REDUCTION="${RSYSLOG_REPEATED_MSG_REDUCTION:-off}"
+
 FINDPERMS_PERMS_DIRS_CANDIDATES="${FINDPERMS_PERMS_DIRS_CANDIDATES:-"public private"}"
 FINDPERMS_OWNERSHIP_DIRS_CANDIDATES="${FINDPERMS_OWNERSHIP_DIRS_CANDIDATES:-"$LOCAL_DIR public private data"}"
-
+SKIP_RENDERED_CONFIGS="${SKIP_RENDERED_CONFIGS:-varnish}"
 export HISTFILE="${LOCAL_DIR}/.bash_history"
 export PSQL_HISTORY="${LOCAL_DIR}/.psql_history"
 export MYSQL_HISTFILE="${LOCAL_DIR}/.mysql_history"
 export IPYTHONDIR="${LOCAL_DIR}/.ipython"
 
-export TMPDIR="${TMPDIR:-/tmp}"
-export STARTUP_LOG="${STARTUP_LOG:-$TMPDIR/django_startup.log}"
+export CRON_LOGS_DIRS="${CRON_LOGS_DIRS:-"data/flags data/logs/cron /logs/cron"}"
 export APP_TYPE="${APP_TYPE:-django}"
+export TMPDIR="${TMPDIR:-/tmp}"
+export STARTUP_LOG="${STARTUP_LOG:-$TMPDIR/${APP_TYPE}_startup.log}"
 export APP_USER="${APP_USER:-$APP_TYPE}"
 export HOST_USER_UID="${HOST_USER_UID:-$(id -u $APP_USER)}"
 export INIT_HOOKS_DIR="${INIT_HOOKS_DIR:-${BASE_DIR}/sys/scripts/hooks}"
-export APP_GROUP="$APP_USER"
+export APP_GROUP="${APP_GROUP:-$APP_USER}"
 export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
-export USER_DIRS="${USER_DIRS:-". .tox src public/media data /logs/cron $LOCAL_DIR ${EXTRA_USER_DIRS}"}"
+export USER_DIRS="${USER_DIRS:-". .tox src public/media data $CRON_LOGS_DIRS $LOCAL_DIR ${EXTRA_USER_DIRS}"}"
 export SHELL_USER="${SHELL_USER:-${APP_USER}}" SHELL_EXECUTABLE="${SHELL_EXECUTABLE:-/bin/bash}"
 
 # django variables
@@ -135,6 +149,7 @@ debuglog() { if [[ -n "$DEBUG" ]];then echo "$@" >&2;fi }
 log() { echo "$@" >&2; }
 die() { log "$@";exit 1; }
 vv() { log "$@";"$@"; }
+dvv() { debuglog "$@";"$@"; }
 
 # Regenerate egg-info & be sure to have it in site-packages
 regen_egg_info() {
@@ -175,35 +190,45 @@ configure() {
         -maxdepth 2 -mindepth 0 -name setup.py -type f 2>/dev/null; )
     # copy only if not existing template configs from common deploy project
     # and only if we have that common deploy project inside the image
-    if [ ! -e etc ];then mkdir etc;fi
-    for i in sys/etc local/*deploy-common/etc local/*deploy-common/sys/etc;do
-        if [ -d $i ];then cp -rfnv $i/* etc >&2;fi
+    # we first  create missing structure, but do not override yet (no clobber)
+    # then override files if they have no pretendants in project customizations
+    if [ ! -e init/etc ];then mkdir -pv init/etc;fi
+    for i in local/*deploy-common/etc local/*deploy-common/sys/etc;do
+        if [ -d $i ];then
+            cp -rf${VCOMMAND} $i/. init/etc
+            while read conffile;do
+                if [ ! -e sys/etc/$conffile ];then
+                    cp -f${VCOMMAND} $i/$conffile init/etc/$conffile
+                fi
+            done < <(cd $i && find -type f|sed -re "s/\.\///g")
+        fi
     done
-    # install with envsubst any template file to / (eg: logrotate & cron file)
-    for i in $(find etc -name "*.envsubst" -type f 2>/dev/null);do
-        di="/$(dirname $i)" \
-            && if [ ! -e "$di" ];then mkdir -pv "$di" >&2;fi \
-            && cp "$i" "/$i" \
-            && CONF_PREFIX="$DJANGO_CONF_PREFIX" confenvsubst.sh "/$i" \
-            && rm -f "/$i"
+    cp -rf$VCOMMAND sys/etc/. init/etc
+    # install with frep any template file to / (eg: logrotate & cron file)
+    cd init
+    for i in $(find etc -name "*.frep" -type f |grep -E -v "${SKIP_RENDERED_CONFIGS}" 2>/dev/null);do
+        d="$(dirname "$i")/$(basename "$i" .frep)"
+        di="/$(dirname $d)"
+        if [ ! -e "$di" ];then mkdir -p${VCOMMAND} "$di" >&2;fi
+        debuglog "Generating with frep $i:/$d"
+        frep "$i:/$d" --overwrite
     done
-    # install wtih frep any template file to / (eg: logrotate & cron file)
-    for i in $(find etc -name "*.frep" -type f 2>/dev/null);do
-        d="$(dirname "$i")/$(basename "$i" .frep)" \
-            && di="/$(dirname $d)" \
-            && if [ ! -e "$di" ];then mkdir -pv "$di" >&2;fi \
-            && echo "Generating with frep $i:/$d" >&2 \
-            && frep "$i:/$d" --overwrite
-    done
+    cd - >/dev/null 2>&1
+
 }
 
 #  services_setup: when image run in daemon mode: pre start setup like database migrations, etc
 services_setup() {
     if [[ -z $NO_IMAGE_SETUP ]];then
-        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | grep -E -q "$DO_IMAGE_SETUP_MODES" ) ;then
+        if [[ -n $FORCE_IMAGE_SETUP ]] || ( echo $IMAGE_MODE | grep -E -q "$IMAGE_SETUP_MODES" ) ;then
             debuglog "Force services_setup"
         else
             debuglog "No image setup" && return 0
+        fi
+    else
+        if [[ -n $SKIP_SERVICES_SETUP ]];then
+            debuglog "Skip image setup"
+            return 0
         fi
     fi
     if [[ "$SKIP_IMAGE_SETUP" = "1" ]];then
@@ -211,7 +236,8 @@ services_setup() {
     fi
     debuglog "doing services_setup"
     # alpine linux has /etc/crontabs/ and ubuntu based vixie has /etc/cron.d/
-    if [ -e /etc/cron.d ] && [ -e /etc/crontabs ];then cp -fv /etc/crontabs/* /etc/cron.d >&2;fi
+    if [ -e /etc/cron.d ] && [ -e /etc/crontabs ];then cp -f$VCOMMAND /etc/crontabs/* /etc/cron.d >&2;fi
+
     # Run any migration
     if [[ -z ${NO_MIGRATE} ]];then
         ( cd $SRC_DIR && gosu $APP_USER ./manage.py migrate --noinput )
@@ -248,7 +274,7 @@ fixperms() {
         <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type f -not \( -perm 0644 2>/dev/null \) |sort)
     while read f;do chown $APP_USER:$APP_USER "$f";done < \
         <(find $FINDPERMS_OWNERSHIP_DIRS_CANDIDATES \
-          \( -type d -or -type f \) -and -not \( -user $APP_USER -and -group $APP_GROUP \) 2>/dev/null|sort)
+          \( -type d -or -type f \) -not \( -user $APP_USER -or -group $APP_GROUP \) 2>/dev/null|sort)
 }
 
 #  usage: print this help
@@ -275,6 +301,7 @@ If NO_START is set: start an infinite loop doing nothing (for dummy containers i
 }
 
 do_fg() {
+    #
     cd $SRC_DIR && exec gosu $APP_USER ./manage.py runserver $DJANGO_LISTEN
 }
 
@@ -309,8 +336,9 @@ pre() {
         execute_hooks beforeservicessetup "$@"
         services_setup
     fi
-    execute_hooks beforesefixperms "$@"
+    execute_hooks afterservicessetup "$@"
     fixperms
+    execute_hooks afterfixperms "$@"
     execute_hooks post "$@"
 }
 
@@ -322,7 +350,7 @@ if [[ -n ${NO_START-} ]];then
 fi
 
 # only display startup logs when we start in daemon mode and try to hide most when starting an (eventually interactive) shell.
-if ! ( echo "$NO_STARTUP_LOGS" | grep -E -iq "^(no?)?$" );then if !( pre >"$STARTUP_LOG" 2>&1 );then cat "$STARTUP_LOG">&2;die "preflight startup failed";fi;else pre;fi;
+if ! ( echo "$NO_STARTUP_LOGS" | grep -E -iq "^(no?)?$" );then if ! ( pre >"$STARTUP_LOG" 2>&1 );then cat "$STARTUP_LOG">&2;die "preflight startup failed";fi;else pre;fi;
 
 if [[ $IMAGE_MODE == "pycharm" ]];then
     cmdargs="$@"

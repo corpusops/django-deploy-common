@@ -274,8 +274,7 @@ RUN bash -c 'set -exo pipefail \
         && rm -rfv sys/statics;\
     fi \
     && : "assemble init" \
-    && cp -frnv local/${APP_TYPE}-deploy-common/sys/* sys \
-    && cp -frnv sys/* init \
+    && for i in init.sh etc sbin scripts;do for j in local/${APP_TYPE}-deploy-common/sys sys;do if [ -e $j/$i ];then cp -frv $j/$i init;fi;done;done \
     \
     && : "connect init.sh" \
     && ln -sf $(pwd)/init/init.sh /init.sh \
@@ -287,13 +286,8 @@ RUN bash -c 'set -exo pipefail \
 
 WORKDIR $BASE_DIR/src
 
-ADD \
-    https://raw.githubusercontent.com/corpusops/docker-images/master/rootfs/bin/project_dbsetup.sh \
-    $BASE_DIR/bin/
-RUN bash -c 'set -exo pipefail \
-   : add helpers; \
-   if [ ! -e "$BASE_DIR/bin" ];then mkdir -pv "$BASE_DIR/bin";fi; \
-   chmod +x $BASE_DIR/bin/*'
+ARG DBSETUP_SH=https://raw.githubusercontent.com/corpusops/docker-images/master/rootfs/bin/project_dbsetup.sh
+ADD --chmod=755 $DBSETUP_SH $BASE_DIR/bin/
 
 ADD --chown=${APP_TYPE}:${APP_TYPE} .git                         $BASE_DIR/.git
 CMD "/init.sh"
