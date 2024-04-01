@@ -6,5 +6,5 @@
   - when: ["cops_django_lifecycle_app|default(true)"]
     tags: ["cops_django_lifecycle_app"]
     block:
-    - include_role: {name: django_vars, allow_duplicates: false}
+    - include_role: {name: django_vars, allow_duplicates: false, public: true}
     - include_role: {name: django,      allow_duplicates: false}
