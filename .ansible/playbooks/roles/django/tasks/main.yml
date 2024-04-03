@@ -41,6 +41,7 @@
     src: "docker.env"
     dest: "{{cops_django_dir}}/docker.env"
     mode: "0640"
+    force: true
     trim_blocks: false
   tags: [django_conf]
 - blockinfile:
