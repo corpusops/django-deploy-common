@@ -2,5 +2,7 @@
 - hosts: "{{ping_servers|default('all')}}"
   gather_facts: no
   roles: [corpusops.roles/ansible_plugins]
-  tasks: [{setup: {}}]
+  tasks:
+  - setup: {}
+  - shell: whoami
 
