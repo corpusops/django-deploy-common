@@ -1,4 +1,8 @@
 ---
+- package:
+    pkg: [rsync]
+    state: present
+  tags: [install_rsync]
 - file:
     state: directory
     mode: "2751"
@@ -10,15 +14,23 @@
   - "{{cops_django_dir}}/local/backup/data"
   - "{{cops_django_dir}}/local/backup/setup"
   tags: [django_layout_dirs]
+- when: cops_django_rsync_password and cops_django_rsync_escalate
+  delegate_to: "localhost"
+  copy:
+    dest: "{{cops_django_rsync_rsh_wrapper_path}}"
+    content: "{{cops_django_rsync_rsh_wrapper}}"
+    force: true
+    mode: "0750"
 - name: Synchronise files inside the environment (deleguation)
   delegate_to: "localhost"
+  environment: "{{cops_django_rsync_env}}"
   synchronize:
-    compress: false
-    ssh_args: "{{cops_django_sshargs}}"
-    src: "{{cops_django_code_dir}}"
+    compress: "{{cops_django_rsync_compress}}"
+    src: "{{cops_django_code_dir}}/"
     dest: "{{cops_django_dir}}/"
-    rsync_opts: "{{cops_django_code_rsync_opts}}"
-    set_remote_user: "no"
+    rsync_path: "{{cops_django_rsync_path}}"
+    rsync_opts: "{{cops_django_rsync_code_opts}}"
+    set_remote_user: "{{cops_django_rsync_set_remote_user}}"
     #update_opts: '--recursive'
   tags: [django_sync, django_sync_code]
 - include_tasks: sync_content.yml

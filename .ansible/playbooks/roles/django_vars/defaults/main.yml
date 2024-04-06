@@ -188,13 +188,35 @@ cops_django_docker_env_extra: ""
 cops_django_localpy_extra: ""
 # Normally playbook is in ./.ansible/playbooks
 cops_django_code_dir: "{{playbook_dir}}/../.."
-cops_django_theme_rsync_opts: ["-azv", "--delete"]
-cops_django_code_rsync_opts: [
+cops_django_has_bastion: "{{(ansible_bastion|default(''))|copsf_asbool}}"
+cops_django_rsync_password: "{{ansible_become_pass|default('')}}"
+cops_django_rsync_user: "{{ansible_user|default('root')}}"
+cops_django_rsync_escalate: "{{cops_django_rsync_user != 'root'}}"
+cops_django_rsync_path: "{% if cops_django_rsync_escalate %}sudo {%if cops_django_rsync_password%}-S {%endif%}{%endif %}rsync"
+cops_django_rsync_env: {PASSWORD: "{{cops_django_rsync_password}}"}
+cops_django_rsync_rsh_wrapper_path: "{{playbook_dir|copsf_dirname}}/ssh_sudo"
+cops_django_rsync_rsh_wrapper: |-
+  #!/bin/bash
+  # Wrapper to escalate remote shell as root for rsync syncronisation
+  { if [ "x${PASSWORD-}" != "x" ];then echo "${PASSWORD-}";fi;cat -; }| ssh "$@" &
+cops_django_rsync_rsh: "{% if cops_django_rsync_password and cops_django_rsync_escalate%}{{cops_django_rsync_rsh_wrapper_path}}{%else%}ssh{%endif%}"
+cops_django_rsync_set_remote_user: "{{ cops_django_has_bastion and 'yes' or 'no'}}"
+cops_django_rsync_compress: false
+cops_django_rsync_opts: |-
+  {#- put $ssh_args here as when we use a custom rsh for interactive
+  sudopass, they would get ignored by the syncronise module #}
+  {%- set o = ['--rsh={0} {1}'.format(cops_django_rsync_rsh, cops_django_sshargs)|quote] %}
+  {{-o|to_json|string}}
+cops_django_rsync_code_opts:  "{{cops_django_rsync_opts+cops_django_rsync_code_default_opts}}"
+cops_django_rsync_theme_opts: "{{cops_django_rsync_opts+cops_django_rsync_theme_default_opts}}"
+cops_django_rsync_theme_default_opts: ["-azv", "--delete"]
+cops_django_rsync_code_default_opts: [
     "-azv",
     # include deploy projects base code
     "--include", "local/*-deploy",
-    "--exclude", ".ansible",
     "--exclude", "local/*",
+    #
+    "--exclude", ".ansible",
     "--exclude", ".tox",
     "--exclude", ".env",
     "--exclude", ".vscode",
