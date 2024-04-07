@@ -1,0 +1,17 @@
+- import_playbook: ./install_base.yml
+- hosts: all
+  gather_facts: yes
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django_vars, public: y}
+  - include_role: {name: corpusops.roles/services_virt_docker}
+    tags: [docker]
+  - include_role: {name: corpusops.roles/localsettings_certbot}
+    tags: [certbot]
+  - include_role: {name: corpusops.roles/services_proxy_haproxy}
+    tags: [haproxy, haproxy_install]
+  - block:
+    - include_role: {name: corpusops.roles/haproxy_registrations}
+    - service: {name: haproxy, state: restarted}
+    tags: [haproxy, haproxy_registration]
+

@@ -1,0 +1,23 @@
+- import_playbook: ./install_base.yml
+- hosts: all
+  gather_facts: yes
+  tags: [install_services]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: corpusops.roles/services_db_postgresql}
+  - include_role: {name: corpusops.roles/services_cache_redis}
+- hosts: all
+  gather_facts: yes
+  roles: [corpusops.roles/ansible_plugins]
+  tags: [install_dbs]
+  tasks:
+  - include_role: {name: corpusops.roles/services_backup_dbsmartbackup}
+  - shell: |-
+      set -ex
+      mkdir /etc/dbsmartbackup || true
+      cp /srv/apps/dbsmartbackup/postgresql.conf.sample /etc/dbsmartbackup/postgresql.conf
+      echo 'TOP_BACKUPDIR=/data/backups'>>/etc/dbsmartbackup/postgresql.conf
+      cat >/etc/cron.d/dbs<<EOF
+      PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+      0 1 0 0 0 root /srv/apps/dbsmartbackup/run_dbsmartbackups.sh >/dev/null 2>&1
+      EOF
