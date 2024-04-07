@@ -1,0 +1,3 @@
+---
+dependencies:
+- django_vars

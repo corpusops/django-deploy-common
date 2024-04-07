@@ -1,0 +1,8 @@
+- hosts: all
+  gather_facts: yes
+  roles: [corpusops.roles/ansible_plugins]
+  tags: [base, install_base]
+  tasks:
+  - include_role: {name: corpusops.roles/localsettings_vim}
+  - include_role: {name: corpusops.roles/localsettings_screen}
+  - include_role: {name: corpusops.roles/localsettings_git}

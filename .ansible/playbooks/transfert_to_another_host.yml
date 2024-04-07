@@ -1,0 +1,153 @@
+# playbook to move app to another host when we are using a separate host which runs directly postgresql & redis
+# Wait or override those groups to be defined in the inventory (see vars):
+# old_db: {hosts: foo}
+# new_db: {hosts: foo}
+# old_django: {hosts: foo}
+# new_django: {hosts: foo}
+# - new:
+#     children: {new_db: {} ,new_django: {}}
+#     vars:
+#        transfer_db_orig: old_db
+#        transfer_django_orig: old_django
+# each new host should have transfer_origin defined to its relative host
+# and you can override vars in:
+# roles/django/transfer_to_another_host/vars/defaults/main.yml
+# .ansible/scripts/call_ansible.sh -vvvvvD  local/*/.ansible/playbooks/transfert_to_another_host.yml -e "{'transfer_db_dest': 'newenv_db_prod', 'transfer_django_dest': 'newenv_django_prod'}" # --skip-tags service_stop,transfer_do_dump,sshkey,rsync_db,restore_roles,restore_db,transfer_django,rsync_django,service_starte,transfer_pg_r
+- hosts: localhost
+  gather_facts: no
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - set_fact:
+      _transfer_db_orig: "{{_transfer_db_orig}}"
+      _transfer_django_orig: "{{_transfer_django_orig}}"
+- hosts: "{{hostvars.localhost.transfer_django_dest}}"
+  gather_facts: no
+  tags: [service, service_stop]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    shell: |-
+      set -ex
+      cd "{{cops_django_dir}}"
+      systemctl stop {{cops_django_servicename}} || true
+      {{cops_django_dc}} stop -t 0
+- hosts: "{{hostvars.localhost._transfer_db_orig}}"
+  gather_facts: no
+  tags: [transfer_do_dump, transfer_pg_r]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    become_user: postgres
+    shell: |-
+      echo 'SELECT datname FROM pg_database'|psql -XtA{%if transfer_include_db_filter%}|(grep -E "{{transfer_include_db_filter}}"||true){%endif%}{% if transfer_skip_db_filter%}|(grep -vE "{{transfer_skip_db_filter}}"||true){%endif%}
+    register: _transfer_dbs_to_transfer
+- hosts: "{{hostvars.localhost._transfer_db_orig}}"
+  gather_facts: no
+  tags: [transfer_do_dump]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    become_user: postgres
+    shell: |-
+      set -ex
+      pg_dumpall -c --if-exists --globals-only>{{transfer_dumps_orig_dir}}/useraccts.sql
+      dbs=$(echo "{{_transfer_dbs}}")
+      for i in $dbs;do pg_dump -Fc $i>{{transfer_dumps_orig_dir}}/$i.sql;done
+- hosts: "{{hostvars.localhost.transfer_db_dest}},{{hostvars.localhost.transfer_django_dest}}"
+  tags: [sshkey]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - file:
+      state: directory
+      path: "{{transfer_ssh_key_path|copsf_dirname}}"
+      mode: "0700"
+  - copy:
+      force: true
+      mode: "0600"
+      dest: "{{transfer_ssh_key_path}}"
+      content: "{{transfer_ssh_content}}"
+- hosts: "{{hostvars.localhost.transfer_db_dest}}"
+  gather_facts: no
+  tags: [transfer_pg]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    tags: [rsync_db]
+    shell: |-
+      set -ex
+      o="{{_transfer_db_orig_vars.ansible_host}}"
+      op="{{transfer_dumps_orig_dir}}"
+      d="{{transfer_dumps_dest_dir}}"
+      dbs=$(echo "{{_transfer_dbs}}")
+      for p in useraccts $dbs;do
+        rsync {{transfer_rsync_args}} -aAzv --delete "$o:$op/$p.sql" "$d/$p.sql"
+      done
+  - become: true
+    tags: [restore_roles]
+    become_user: postgres
+    shell: |-
+      set -exo pipefail
+      export LANG=C LC_ALL=C
+      grep -ivE "DROP ROLE|ROLE.* postgres" {{transfer_dumps_dir}}/useraccts.sql|LANG=C LC_ALL=C psql -v ON_ERROR_STOP=1
+    args: {executable: /bin/bash}
+    register: _createrole
+    failed_when: 'not("déjà" in _createrole.stderr or "already" in _createrole.stderr)'
+  - become: true
+    tags: [restore_db]
+    become_user: postgres
+    shell: |-
+      set -exo pipefail
+      dbs=$(echo "{{_transfer_dbs}}")
+      for i in $dbs;do
+        cat|psql<<EOF
+      SELECT pg_terminate_backend(pid)
+      FROM pg_stat_activity
+      WHERE datname = '$i';
+      EOF
+        dropdb $i || true
+        createdb -O $i $i
+        cat {{transfer_dumps_dir}}/$i.sql|pg_restore --if-exists -ecd $i
+      done
+    args: {executable: /bin/bash}
+- hosts: "{{hostvars.localhost._transfer_django_orig}}"
+  gather_facts: no
+  tags: [transfer_django_r]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - shell: |-
+      docker volume ls --format '{{"{{"}}.Name}}'{%if transfer_include_volumes_filter%}|(grep -E "{{transfer_include_volumes_filter}}"||true){%endif%}{%if transfer_skip_volumes_filter%}|(grep -vE "{{transfer_skip_volumes_filter}}"||true){%endif%}
+    register: _transfer_volumes_to_transfer
+- hosts: "{{hostvars.localhost.transfer_django_dest}}"
+  gather_facts: no
+  tags: [transfer_django]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    tags: [rsync_django]
+    shell: |-
+      set -ex
+      dvolumes=$(echo "{{_transfer_volumes}}")
+      for i in $dvolumes;do
+        if ! ( docker volume inspect $i >/dev/null);then docker volume create $i;fi
+        p=/var/lib/docker/volumes/$i
+        o="{{transfer_origin}}"
+        rsync {{transfer_rsync_args}} -aAzv --delete "$o:$p/_data/" "$p/_data/"
+      done
+- hosts: "{{hostvars.localhost.transfer_django_dest}}"
+  gather_facts: no
+  tags: [service, service_start]
+  roles: [corpusops.roles/ansible_plugins]
+  tasks:
+  - include_role: {name: django/transfer_to_another_host/vars, public: y}
+  - become: true
+    shell: |-
+      set -ex
+      cd "{{cops_django_dir}}"
+      {{cops_django_dc}} up -d --force-recreate
+      systemctl start {{cops_django_servicename}} || true
