@@ -68,6 +68,13 @@ WORKDIR /code
 ADD apt.txt ./
 RUN bash -exc ': \
     \
+    && osver=$(. /etc/os-release && echo $VERSION_CODENAME ) \
+    && : use postgresql.org repos \
+    && if (grep -q -E ^postgresql apt.txt);then \
+         apt update -qq && apt install -y curl ca-certificates gnupg; \
+         ( curl https://www.postgresql.org/media/keys/ACCC4CF8.asc|gpg --dearmor|tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg >/dev/null||true; ); \
+         ( echo "deb http://apt.postgresql.org/pub/repos/apt ${osver}-pgdg main" > /etc/apt/sources.list.d/pgdg.list); \
+    fi \
     && : "install packages" \
     && apt-get update  -qq \
     && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" apt.txt \
