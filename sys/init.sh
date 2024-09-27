@@ -29,7 +29,7 @@ for i in /etc/environment /etc/default/locale;do if [ -e $i ];then . $i;fi;done
 export PATH=$OPATH
 
 # load virtualenv if present
-for VENV in "$BASE_DIR/venv" "$BASE_DIR/venv";do if [ -e "$VENV" ];then export VENV;. "$VENV/bin/activate";break;fi;done
+for VENV in "$BASE_DIR/venv" "$BASE_DIR";do if [ -e "$VENV/bin/activate" ];then export VENV;. "$VENV/bin/activate";break;fi;done
 
 SRC_DIR="${SRC_DIR:-${TOPDIR}}"
 if [ -e src ];then SRC_DIR="$TOPDIR/src";fi
