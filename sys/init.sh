@@ -7,7 +7,7 @@ DASHVCOMMAND=""
 if [[ -n $SDEBUG ]];then set -x; VCOMMAND="v"; DASHVCOMMAND="-v";fi
 SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
 ODIR=$(pwd)
-cd "$SCRIPTSDIR/.."
+cd "${TOPDIR:-$SCRIPTSDIR/..}"
 TOPDIR="$(pwd)"
 BASE_DIR="${BASE_DIR:-${TOPDIR}}"
 
@@ -31,9 +31,11 @@ export PATH=$OPATH
 # load virtualenv if present
 for VENV in "$BASE_DIR/venv" "$BASE_DIR";do if [ -e "$VENV/bin/activate" ];then export VENV;. "$VENV/bin/activate";break;fi;done
 
-SRC_DIR="${SRC_DIR:-${TOPDIR}}"
-if [ -e src ];then SRC_DIR="$TOPDIR/src";fi
-
+SRC_DIR="${SRC_DIR-}"
+if [[ -z "${SRC_DIR}" ]];then
+    SRC_DIR="$TOPDIR"
+    if [ -e "${SRC_DIR}/src" ];then SRC_DIR="$SRC_DIR/src";fi
+fi
 
 DEFAULT_IMAGE_MODE=gunicorn
 NO_GUNICORN=${NO_GUNICORN-}
