@@ -544,3 +544,6 @@ teleport_verbose: "{{teleport_is_verbose and 'v' or ''}}"
 teleport_vverbose: "{{teleport_is_verbose  and '-v' or ''}}"
 teleport_xverbose: "{{teleport_is_verbose and 'x' or ''}}"
 teleport_vxverbose: "{{teleport_is_verbose  and '-x' or ''}}"
+
+# not used anymore but used in local inventories, do not remove
+cops_django_py_ver: "3.8"
