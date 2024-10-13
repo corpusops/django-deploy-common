@@ -8,6 +8,8 @@
 # ( See https://github.com/moby/moby/issues/37345 && https://github.com/moby/moby/issues/37622#issuecomment-412101935 )
 # version: 3
 ARG \
+    UBUNTU_APT_MIRROR='https://fr.archive.ubuntu.com/ubuntu/' \
+    CANONICAL_APT_MIRROR='https://fr.archive.canonical.com/ubuntu/' \
     APP_GROUP= \
     APP_TYPE=django \
     APP_USER= \
@@ -66,7 +68,7 @@ FROM $BASE AS base
 USER root
 # inherit all global args (think to sync this block with runner stage)
 ARG \
-    BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
+    UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
     LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
@@ -106,6 +108,8 @@ RUN \
     --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt \
     --mount=type=cache,id=cops${BASE}list,target=/var/lib/apt/lists \
     bash -c 'set -exo pipefail \
+    && if [ "x${UBUNTU_APT_MIRROR}" != "x" ];then echo "Using UBUNTU_APT_MIRROR: ${UBUNTU_APT_MIRROR}";         sed -i -re "s!(deb(-src)?\s+)http.?[:]//(archives?.ubuntu.com/ubuntu/)!\1${UBUNTU_APT_MIRROR}!g" $(find /etc/apt/sources.list* -type f);fi \
+    && if [ "x${CANONICAL_APT_MIRROR}" != "x" ];then echo "Using CANONICAL_APT_MIRROR: ${CANONICAL_APT_MIRROR}";sed -i -re "s!(deb(-src)?\s+)http.?[:]//(archives?.canonical.com/ubuntu/)!\1${CANONICAL_APT_MIRROR}!g" $(find /etc/apt/sources.list* -type f);fi \
     && : "$(date): install packages" \
     && rm -f /etc/apt/apt.conf.d/docker-clean || true;echo "Binary::apt::APT::Keep-Downloaded-Packages \"true\";" > /etc/apt/apt.conf.d/keep-cache \
     && osver=$(. /etc/os-release && echo $VERSION_CODENAME ) \
@@ -152,7 +156,7 @@ RUN \
 FROM base AS appsetup
 # inherit all global args
 ARG \
-    BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER gTRIP_HELPERS \
+    UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
     LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ \
@@ -283,7 +287,7 @@ CMD "/init.sh"
 FROM base AS runner
 # inherit all global args
 ARG \
-    BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER \
+    UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
     LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
