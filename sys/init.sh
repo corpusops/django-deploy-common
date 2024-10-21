@@ -10,7 +10,7 @@ DEBUG=${DEBUG:-${SDEBUG-}}
 # activate shell debug if SDEBUG is set
 VCOMMAND=""
 DASHVCOMMAND=""
-if [[ -n $SDEBUG ]];then set -x; VCOMMAND="v"; DASHVCOMMAND="-v";fi
+if [[ -n $SDEBUG ]];then set -x; VCOMMAND="v"; VDEBUG="v"; DASHVCOMMAND="-v";fi
 SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
 ODIR=$(pwd)
 cd "${TOPDIR:-$SCRIPTSDIR/..}"
@@ -321,6 +321,7 @@ execute_hooks() {
 
 # Run app preflight routines (layout, files sync to campanion volumes, migrations, permissions fix, etc.)
 pre() {
+    if [ "x${NO_PRE_STARTUP-}" != "x" ];then return 0;fi
     if [ -e "${BASE_DIR}/docs" ] && [[ -z "${SKIP_SYNC_DOCS}" ]];then
         rsync -az${VCOMMAND} "${BASE_DIR}/docs/" "${BASE_DIR}/outdocs/" --delete
     fi
@@ -372,7 +373,7 @@ if [[ "${IMAGE_MODE}" != "shell" ]]; then
 else
     if [[ "${1-}" = "shell" ]];then shift;fi
     # retrocompat with old images
-    cmd="$@"
+    cmd="${@:-bash}"
     if ( echo "$cmd" | grep -E -q "tox.*/bin/sh -c tests" );then
         cmd=$( echo "${cmd}"|sed -r -e "s/-c tests/-exc '.\/manage.py test/" -e "s/$/'/g" )
     fi
