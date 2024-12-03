@@ -280,7 +280,7 @@ RUN bash -c 'set -exo pipefail \
     && ln -sf $(pwd)/init/init.sh /init.sh \
     \
     && : "latest fixperm" \
-    && find -not -user ${APP_USER} | while read f;do chown ${APP_USER}:${PHP_GROUP} "$f";done \
+    && find -not -user ${APP_USER} | while read f;do chown ${APP_USER}:${APP_GROUP} "$f";done \
     && find sys/etc/cron.d -type f | while read f;do chmod -vf 0644 "$f";done \
     && : "$(date) end"'
 
