@@ -286,7 +286,7 @@ RUN bash -c 'set -exo pipefail \
 
 WORKDIR $BASE_DIR/src
 
-ARG DBSETUP_SH=https://raw.githubusercontent.com/corpusops/docker-images/master/rootfs/bin/project_dbsetup.sh
+ARG DBSETUP_SH=https://raw.githubusercontent.com/corpusops/docker-images/v2/rootfs/bin/project_dbsetup.sh
 ADD --chmod=755 $DBSETUP_SH $BASE_DIR/bin/
 
 ADD --chown=${APP_TYPE}:${APP_TYPE} .git                         $BASE_DIR/.git
