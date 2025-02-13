@@ -4,14 +4,13 @@
 # export SHELL_DEBUG=1
 # export DEBUG=1
 # start by the first one, then try the others
-
+export SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
 SDEBUG=${SDEBUG-}
 DEBUG=${DEBUG:-${SDEBUG-}}
 # activate shell debug if SDEBUG is set
 VCOMMAND=""
 DASHVCOMMAND=""
 if [[ -n $SDEBUG ]];then set -x; VCOMMAND="v"; VDEBUG="v"; DASHVCOMMAND="-v";fi
-SCRIPTSDIR="$(dirname $(readlink -f "$0"))"
 ODIR=$(pwd)
 cd "${TOPDIR:-$SCRIPTSDIR/..}"
 TOPDIR="$(pwd)"
@@ -19,12 +18,6 @@ BASE_DIR="${BASE_DIR:-${TOPDIR}}"
 
 # now be in stop-on-error mode
 set -e
-
-# export back the gateway ip as a host if ip is available in container
-if ( ip -4 route list match 0/0 &>/dev/null );then
-    ip -4 route list match 0/0 | awk '{print $3" host.docker.internal"}' >> /etc/hosts
-fi
-
 PYCHARM_DIRS="${PYCHARM_DIRS:-"/opt/pycharm /opt/.pycharm /opt/.pycharm_helpers"}"
 OPYPATH="${PYTHONPATH-}"
 for i in $PYCHARM_DIRS;do if [ -e "$i" ];then IMAGE_MODE="${FORCE_IMAGE_MODE-pycharm}";break;fi;done
@@ -80,11 +73,11 @@ SKIP_IMAGE_SETUP="${KIP_IMAGE_SETUP:-""}"
 FORCE_IMAGE_SETUP="${FORCE_IMAGE_SETUP:-"1"}"
 SKIP_SERVICES_SETUP="${SKIP_SERVICES_SETUP-}"
 IMAGE_SETUP_MODES="${IMAGE_SETUP_MODES:-"fg|gunicorn"}"
+EP_CUSTOM_ACTIONS="compile_messages|fixperms|"
 export PIP_SRC=${PIP_SRC:-${BASE_DIR}/pipsrc}
 export LOCAL_DIR="${LOCAL_DIR:-/local}"
 NO_PIPENV_INSTALL=${NO_PIPENV_INSTALL-1}
 PIPENV_INSTALL_ARGS="${PIPENV_INSTALL_ARGS-"--ignore-pipfile"}"
-
 # log to stdout which in turn should log to docker logger, do not store local logs
 export RSYSLOG_LOGFORMAT="${RSYSLOG_LOGFORMAT:-'%timegenerated% %syslogtag% %msg%\\n'}"
 export RSYSLOG_OUT_LOGFILE="${RSYSLOG_OUT_LOGFILE:-n}"
@@ -107,8 +100,9 @@ export HOST_USER_UID="${HOST_USER_UID:-$(id -u $APP_USER)}"
 export INIT_HOOKS_DIR="${INIT_HOOKS_DIR:-${BASE_DIR}/sys/scripts/hooks}"
 export APP_GROUP="${APP_GROUP:-$APP_USER}"
 export EXTRA_USER_DIRS="${EXTRA_USER_DIRS-}"
-export USER_DIRS="${USER_DIRS:-". .tox src public/media data $CRON_LOGS_DIRS $LOCAL_DIR ${EXTRA_USER_DIRS}"}"
+export USER_DIRS="${USER_DIRS:-". .tox src public/media data /home/$APP_USER/.cache/pip $CRON_LOGS_DIRS $LOCAL_DIR ${EXTRA_USER_DIRS}"}"
 export SHELL_USER="${SHELL_USER:-${APP_USER}}" SHELL_EXECUTABLE="${SHELL_EXECUTABLE:-/bin/bash}"
+export SKIP_REGEN_EGG_INFO="${SKIP_REGEN_EGG_INFO-}"
 
 # django variables
 export GUNICORN_CLASS=${GUNICORN_CLASS:-sync}
@@ -165,7 +159,7 @@ regen_egg_info() {
 
 #  shell: Run interactive shell inside container
 _shell() {
-    exec gosu ${user:-$APP_USER} $SHELL_EXECUTABLE -$([[ -n ${SSDEBUG:-$SDEBUG} ]] && echo "x" )elc "${@:-${SHELL_EXECUTABLE}}"
+    exec gosu ${user:-$APP_USER} $SHELL_EXECUTABLE -$([[ -n ${SSDEBUG:-$SDEBUG} ]] && echo "x" )elc "export PATH=$PATH;${@:-${SHELL_EXECUTABLE}}"
 }
 
 #  configure: generate configs from template at runtime
@@ -186,25 +180,29 @@ configure() {
     fi
     # regenerate any setup.py found as it can be an egg mounted from a docker volume
     # without having a chance to be built
-    while read f;do regen_egg_info "$f";done < <( \
-        find "$TOPDIR/setup.py" "$TOPDIR/src" "$TOPDIR/lib" \
-        -maxdepth 2 -mindepth 0 -name setup.py -type f 2>/dev/null; )
+    if [[ -z "${SKIP_REGEN_EGG_INFO-}" ]];then
+        while read f;do regen_egg_info "$f";done < <( \
+            find "$TOPDIR/setup.py" "$TOPDIR/src" "$TOPDIR/src.ext" \
+            -maxdepth 2 -mindepth 0 -name setup.py -type f 2>/dev/null; )
+    fi
     # copy only if not existing template configs from common deploy project
     # and only if we have that common deploy project inside the image
     # we first  create missing structure, but do not override yet (no clobber)
     # then override files if they have no pretendants in project customizations
     if [ ! -e init/etc ];then mkdir -pv init/etc;fi
-    for i in local/*deploy-common/etc local/*deploy-common/sys/etc;do
-        if [ -d $i ];then
-            cp -rf${VCOMMAND} $i/. init/etc
-            while read conffile;do
-                if [ ! -e sys/etc/$conffile ];then
-                    cp -f${VCOMMAND} $i/$conffile init/etc/$conffile
-                fi
-            done < <(cd $i && find -type f|sed -re "s/\.\///g")
-        fi
+    for j in etc scripts;do
+        for i in local/*deploy-common/$j local/*deploy-common/sys/$j sys/$j;do
+            if [ -d $i ];then
+                if [ ! -e init/$j ];then mkdir -pv init/$j;fi
+                cp -rf${VCOMMAND} $i/. init/$j
+                while read conffile;do
+                    if [ ! -e sys/$j/$conffile ];then
+                        cp -f${VCOMMAND} $i/$conffile init/$j/$conffile
+                    fi
+                done < <(cd $i && find -type f|sed -re "s/\.\///g")
+            fi
+        done
     done
-    cp -rf$VCOMMAND sys/etc/. init/etc
     # install with frep any template file to / (eg: logrotate & cron file)
     cd init
     for i in $(find etc -name "*.frep" -type f |grep -E -v "${SKIP_RENDERED_CONFIGS}" 2>/dev/null);do
@@ -245,7 +243,7 @@ services_setup() {
     fi
     # Compile gettext messages
     if [[ -z ${NO_COMPILE_MESSAGES} ]];then
-        ( cd $SRC_DIR && gosu $APP_USER ./manage.py compilemessages )
+        ( compile_messages; )
     fi
     # Collect statics
     if [[ -z ${NO_COLLECT_STATIC} ]];then
@@ -256,10 +254,19 @@ services_setup() {
 # fixperms: basic file & ownership enforcement
 fixperms() {
     if [[ -n $NO_FIXPERMS ]];then return 0;fi
-	if [ "$(id -u $APP_USER)" != "$HOST_USER_UID" ];then
-	    groupmod -g $HOST_USER_UID $APP_USER
-	    usermod -u $HOST_USER_UID -g $HOST_USER_UID $APP_USER
-	fi
+    for i in sys/ssh;do
+        for j in root ${APP_USER};do
+            h=$(eval echo ~$j)
+            s=$h/.ssh
+            if [ ! -e $s ];then mkdir -pv $s;fi
+            if [ -e $i ];then cp -rfv $i/. $s;fi
+            chmod -R 0700 $s;chown -R $j $s;chown $j $h;while read f;do chmod 0600 "$f";done < <(find $s -type f)
+        done
+    done
+    if [ "$(id -u $APP_USER)" != "$HOST_USER_UID" ];then
+        groupmod -g $HOST_USER_UID $APP_USER
+        usermod -u $HOST_USER_UID -g $HOST_USER_UID $APP_USER
+    fi
     for i in /etc/{crontabs,cron.d} /etc/logrotate.d /etc/supervisor.d;do
         if [ -e $i ];then
             while read f;do
@@ -269,13 +276,16 @@ fixperms() {
         fi
     done
     for i in $USER_DIRS;do if [ -e "$i" ];then chown $APP_USER:$APP_GROUP "$i";fi;done
-    while read f;do chmod 0755 "$f";done < \
-        <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type d -not \( -perm 0755 2>/dev/null \) |sort)
-    while read f;do chmod 0644 "$f";done < \
-        <(find $FINDPERMS_PERMS_DIRS_CANDIDATES -type f -not \( -perm 0644 2>/dev/null \) |sort)
-    while read f;do chown $APP_USER:$APP_USER "$f";done < \
-        <(find $FINDPERMS_OWNERSHIP_DIRS_CANDIDATES \
-          \( -type d -or -type f \) -not \( -user $APP_USER -or -group $APP_GROUP \) 2>/dev/null|sort)
+    chmod 2755 $BASE_DIR
+    for i in $FINDPERMS_PERMS_DIRS_CANDIDATES;do if [ -e $i ];then
+        while read f;do chmod 0755 "$f"&done < <(find $i -type d -not \( -perm 0755 2>/dev/null \) |sort)
+        while read f;do chmod 0644 "$f"&done < <(find $i -type f -not \( -perm 0644 2>/dev/null \) |sort)
+    fi;done
+    for i in $FINDPERMS_OWNERSHIP_DIRS_CANDIDATES;do if [ -e $i ];then
+        while read f;do chown $APP_USER:$APP_USER "$f"&done < \
+            <(find $i \( -type d -or -type f \) -not \( -user $APP_USER -or -group $APP_GROUP \) 2>/dev/null|sort)
+    fi;done
+    wait
 }
 
 #  usage: print this help
@@ -303,9 +313,8 @@ If NO_START is set: start an infinite loop doing nothing (for dummy containers i
 
 do_fg() {
     #
-    ( SUPERVISORD_CONFIGS="rsyslog" exec supervisord.sh )&
     gosu $APP_USER bash -c "set -ex\
-    && cd $SRC_DIR && ./manage.py runserver $DJANGO_LISTEN"
+    && cd $SRC_DIR && exec ./manage.py runserver $DJANGO_LISTEN"
 }
 
 execute_hooks() {
@@ -346,11 +355,19 @@ pre() {
     execute_hooks post "$@"
 }
 
-if ( echo $1 | grep -E -q -- "--help|-h|help" );then usage;fi
+compile_messages() {
+    ( cd $SRC_DIR && gosu $APP_USER ./manage.py compilemessages )
+}
 
+if ( echo $1 | grep -E -q -- "--help|-h|help" );then set -- usage $@;fi
 if [[ -n ${NO_START-} ]];then
     while true;do echo "start skipped" >&2;sleep 65535;done
     exit $?
+fi
+if ( echo $1 | grep -E -q -- "^(${EP_CUSTOM_ACTIONS}do_fg|usage)$" );then $@;exit $?;fi
+# export back the gateway ip as a host if ip is available in container
+if ( ip -4 route list match 0/0 &>/dev/null );then
+    if ! (ip -4 route list match 0/0 | awk '{print $3" host.docker.internal"}' >> /etc/hosts );then echo "failed to patch /etc/hosts, continuing anyway";fi
 fi
 
 # only display startup logs when we start in daemon mode and try to hide most when starting an (eventually interactive) shell.
@@ -362,11 +379,13 @@ if [[ $IMAGE_MODE == "pycharm" ]];then
     exec gosu $APP_USER bash -lc "set -e;cd $ODIR;export PYTHONPATH=\"$OPYPATH:\${PYTHONPATH-}·\";python $cmdargs"
 fi
 
+
 if [[ "${IMAGE_MODE}" != "shell" ]]; then
     if ! ( echo $IMAGE_MODE | grep -E -q "$IMAGE_MODES" );then die "Unknown image mode ($IMAGE_MODES): $IMAGE_MODE";fi
     log "Running in $IMAGE_MODE mode"
     if [ -e "$STARTUP_LOG" ];then cat "$STARTUP_LOG";fi
     if [[ "$IMAGE_MODE" = "fg" ]]; then
+        ( SUPERVISORD_CONFIGS="rsyslog" exec supervisord.sh )&
         do_fg
     else
         cfg="/etc/supervisor.d/$IMAGE_MODE"
@@ -383,3 +402,4 @@ else
     execute_hooks beforeshell "$@"
     ( cd $SRC_DIR && user=$SHELL_USER _shell "$cmd" )
 fi
+# vim:set et sts=4 ts=4 tw=0:

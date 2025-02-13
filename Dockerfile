@@ -60,7 +60,6 @@ ARG \
     VIRTUAL_ENV="$BASE_DIR/venv" \
     WHEEL_REQ="wheel>=${MINIMUM_WHEEL_VERSION}"
 #
-
 FROM $HELPERS AS helpers
 FROM $BASE AS base
 USER root
@@ -68,7 +67,7 @@ USER root
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
-    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
+    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
@@ -123,19 +122,17 @@ RUN \
     && apt-get update  -qq \
     && sed -i -re "s/(python-?)[0-9]\.[0-9]+/\1$PY_VER/g" apt.txt \
     && apt-get install -qq -y --no-install-recommends $(sed -re "/$DEV_DEPENDENCIES_PATTERN/,$ d" apt.txt|grep -vE "^\s*#"|tr "\n" " " ) \
-    && printf "${SETUPTOOLS_REQ}\n${PIP_REQ}\n${WHEEL_REQ}\n\n" > pip_reqs.txt \
-    && : "$(date) end"'
+    && printf "virtualenv\n${SETUPTOOLS_REQ}\n${PIP_REQ}\n${WHEEL_REQ}\n\n" > pip_reqs.txt \
+    && : "$(date) end" \
+    '
 
 RUN \
     --mount=type=bind,from=helpers,target=/s \
     bash -c 'set -exo pipefail \
-    && : "$(date): setup project user & workdir, and ~/ssh"\
+    && : "$(date): setup project user & workdir"\
     && for g in $APP_GROUP;do if !( getent group ${g} &>/dev/null );then groupadd ${g};fi;done \
     && if !( getent passwd ${APP_USER} &>/dev/null );then useradd -g ${APP_GROUP} -ms /bin/bash ${APP_USER} --uid ${HOST_USER_UID} --home-dir /home/${APP_USER};fi \
-    && if [ ! -e /home/${APP_USER}/.ssh ];then mkdir /home/${APP_USER}/.ssh;fi \
     && if [ ! -e $LOCAL_DIR ];then mkdir -p $LOCAL_DIR;fi \
-    && chown ${APP_USER}:${APP_GROUP} $LOCAL_DIR /home/${APP_USER}/.ssh /home/${APP_USER} . \
-    && chmod 2755 . \
     \
     && : "$(date): inject corpusops helpers"\
     && for i in /cops_helpers/ /etc/supervisor.d/ /etc/rsyslog.d/ /etc/rsyslog.conf /etc/rsyslog.conf.frep /etc/cron.d/ /etc/logrotate.d/;do \
@@ -150,23 +147,23 @@ RUN \
     \
     && : "$(date): setup project timezone"\
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
-    && : "$(date) end"'
-
+    && : "$(date) end" \
+    '
 
 FROM base AS appsetup
 # inherit all global args (think to sync this block with runner stage)
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
-    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
+    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
     LOCAL_DIR HISTFILE PSQL_HISTORY MYSQL_HISTFILE IPYTHONDIR \
     VSCODE_VERSION WITH_VSCODE DOCS_FOLDERS
 RUN \
-    --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt \
-    --mount=type=cache,id=cops${BASE}list,target=/var/lib/apt/lists \
+    --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=cops${BASE}list,target=/var/lib/apt/lists,sharing=locked \
     bash -c 'set -exo pipefail \
     && : "$(date)install dev packages"\
     && apt-get update  -qq \
@@ -178,25 +175,24 @@ RUN for i in keys/* $DOCS_FOLDERS init sys local/${APP_TYPE}-deploy-common .git 
              setup.* *.ini *.rst *.md *.txt README* requirements* \
     ;do if ! ( echo "$i" | egrep -q "pip_reqs.txt" );then ( rm -vrf $i || true );fi;done
 
+
 # Install now app deps without editable filter
 ADD --chown=${APP_TYPE}:${APP_TYPE} lib lib/
 # warning: requirements adds are done via the *txt glob
 ADD --chown=${APP_TYPE}:${APP_TYPE} setup.* *.ini *.rst *.md *.txt README* requirements* ./
 # only bring minimal app for now as we get only deps (CI optims)
 ADD --chown=${APP_TYPE}:${APP_TYPE} src      ./src/
-ADD --chown=${APP_TYPE}:${APP_TYPE} private  ./private/
-
-RUN bash -c 'set -exo pipefail \
-    && : "$(date): middletime fixperms" \
-    && find $BASE_DIR -not -user ${APP_TYPE} | while read f;do chown ${APP_TYPE}:${APP_TYPE} "$f";done  \
-    && : "$(date) end"'
-
+ADD --chown=${APP_TYPE}:${APP_TYPE} local/${APP_TYPE}-deploy-common/sys/init.sh init/
+ADD --chown=${APP_TYPE}:${APP_TYPE} sys/*t*s*                                   init/
+ADD --chown=${APP_TYPE}:${APP_TYPe} sys/ssh/*                                   sys/ssh/
 RUN \
-    --mount=type=cache,id=cops${APP_TYPE}pip${BUILD_DEV},target=/home/$APP_TYPE/.cache/pip \
-    chown $APP_TYPE /home/$APP_TYPE/.cache/pip \
-    && gosu $APP_TYPE bash -c 'set -exo pipefail \
+    --mount=type=cache,id=cops${APP_TYPE}pip${BUILD_DEV},target=/home/$APP_USER/.cache/pip \
+    : "fixperms and ssh configuration" \
+    && init/init.sh fixperms \
+    && gosu $APP_USER bash -c 'set -exo pipefail \
     && : "$(date): Application installation" \
-    && set -x && if [ ! -e venv ];then python${PY_VER} -m venv venv;fi \
+    && set -x \
+    && if [ ! -e venv ];then python${PY_VER} -m venv venv;fi \
     && if [ ! -e requirements ];then mkdir requirements;fi \
     \
     && : "handle both old and new layouts: /code/requirements.txt /code/requirements/requirements.txt" \
@@ -231,7 +227,7 @@ FROM appsetup AS final
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
-    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
+    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
@@ -261,7 +257,8 @@ RUN bash -c 'set -exo pipefail \
     && : "$(date) end"'
 
 USER root
-RUN bash -c 'set -exo pipefail \
+RUN set -e \
+    && bash -c 'set -exo pipefail \
     && : "create layout" \
     && mkdir -vp sys init local/${APP_TYPE}-deploy-common/sys \
     && : "if we found a static dist inside the sys directory, it has been injected during" \
@@ -274,21 +271,22 @@ RUN bash -c 'set -exo pipefail \
         && rm -rfv sys/statics;\
     fi \
     && : "assemble init" \
+    && : "We make an intermediary init folder to allow to have the entrypoint mounted as a volume in dev" \
+    && : "The idea is to have a glue git submodule inside local/$APP_TYPE-deploy-common which           " \
+    && : "has most of the common deploy code but any file inside sys/ may override the file             " \
+    && : "inside the same location at local/$APP_TYPE-deploy-common/sys/*                               " \
     && for i in init.sh etc sbin scripts;do for j in local/${APP_TYPE}-deploy-common/sys sys;do if [ -e $j/$i ];then cp -frv $j/$i init;fi;done;done \
     \
     && : "connect init.sh" \
     && ln -sf $(pwd)/init/init.sh /init.sh \
     \
-    && : "latest fixperm" \
-    && find -not -user ${APP_USER} | while read f;do chown ${APP_USER}:${APP_GROUP} "$f";done \
-    && find sys/etc/cron.d -type f | while read f;do chmod -vf 0644 "$f";done \
-    && : "$(date) end"'
+    && : "latest fixperms" \
+    && init/init.sh fixperms'
 
 WORKDIR $BASE_DIR/src
 
 ARG DBSETUP_SH=https://raw.githubusercontent.com/corpusops/docker-images/master/rootfs/bin/project_dbsetup.sh
 ADD --chmod=755 $DBSETUP_SH $BASE_DIR/bin/
-
 ADD --chown=${APP_TYPE}:${APP_TYPE} .git                         $BASE_DIR/.git
 CMD "/init.sh"
 
@@ -297,7 +295,7 @@ FROM base AS runner
 ARG \
     UBUNTU_APT_MIRROR CANONICAL_APT_MIRROR BASE VIRTUAL_ENV BASE_DIR PATH APP_GROUP APP_TYPE APP_USER STRIP_HELPERS \
     BUILD_DEV DEBIAN_FRONTEND HOST_USER_UID LANG LANGUAGE TZ \
-    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH \ CPPLAGS \
+    LDFLAGS CFLAGS C_INCLUDE_PATH CPLUS_INCLUDE_PATH CPPLAGS \
     FORCE_PIP FORCE_PIPENV WHEEL_REQ PIPENV_REQ PIP_REQ PIP_SRC SETUPTOOLS_REQ REQS DEV_REQS\
     MINIMUM_PIPENV_VERSION MINIMUM_PIP_VERSION MINIMUM_SETUPTOOLS_VERSION MINIMUM_WHEEL_VERSION \
     PYTHONUNBUFFERED PY_VER DEV_DEPENDENCIES_PATTERN SECRET_KEY \
@@ -333,7 +331,8 @@ ENV \
 RUN --mount=type=bind,from=final,target=/s \
     for i in /init.sh /home/ $BASE_DIR/ \
              /cops_helpers/ /etc/supervisor.d/ /etc/rsyslog.d/ /etc/rsyslog.conf /etc/rsyslog.conf.frep /etc/cron.d/ /etc/logrotate.d/ \
-    ;do if [ -e /s${i} ] || [ -h /s${i} ];then rsync -aAH --numeric-ids /s${i} ${i};fi;done
+    ;do if [ -e /s${i} ] || [ -h /s${i} ];then rsync -aAH --numeric-ids /s${i} ${i};fi;done \
+    && init/init.sh fixperms
 WORKDIR $BASE_DIR/src
 ADD --chown=${APP_TYPE}:${APP_TYPE} .git                         $BASE_DIR/.git
 # image will drop privileges itself using gosu at the end of the entrypoint
